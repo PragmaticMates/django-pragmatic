@@ -1,0 +1,13 @@
+{% load i18n %}
+
+{% if messages %}
+<div id="messages" class="clearfix col-md-12">
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags }}">
+        <div class="wrapper">
+            {% autoescape off %}{{ message }}{% endautoescape %}
+        </div><!-- /.wrapper -->
+    </div>
+    {% endfor %}
+</div><!-- /#messages -->
+{% endif %}

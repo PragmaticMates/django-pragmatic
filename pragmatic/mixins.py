@@ -63,7 +63,7 @@ class RestrictUserMixin(object):
 
 
 class DeleteObjectMixin(object):
-    template_name = 'utils/confirm_delete.html'
+    template_name = 'pragmatic/confirm_delete.html'
     title = _(u'Delete object')
     message_success = _(u'Object successfully deleted.')
     message_error = _(u'Object could not be deleted, check if some objects are not associated with it.')
