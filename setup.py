@@ -6,7 +6,7 @@ setup(
     name='django-pragmatic',
     version='0.2.1',
     description='Pragmatic tools and utilities for Django projects',
-    long_description=open('README').read(),
+    long_description=open('README.rst').read(),
     author='Pragmatic Mates',
     author_email='info@pragmaticmates.com',
     maintainer='Pragmatic Mates',

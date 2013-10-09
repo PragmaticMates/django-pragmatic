@@ -1,7 +1,7 @@
 {% load i18n %}
 
 {% if messages %}
-<div id="messages" class="clearfix col-md-12">
+<div class="messages">
     {% for message in messages %}
     <div class="alert alert-{{ message.tags }}">
         <div class="wrapper">

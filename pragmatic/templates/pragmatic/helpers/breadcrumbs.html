@@ -1,20 +1,17 @@
 {% load i18n %}
 
 {% if request.breadcrumbs.0 %}
-    <div class="col-xs-12">
-        <ul class="breadcrumb">
-            <li>{% trans 'You are at' %}: &nbsp;</li>
-            {% for breadcrumb in request.breadcrumbs %}
-                {% if not forloop.last %}
-                    <li>
-                        <a href="{{ breadcrumb.url }}">{{ breadcrumb.name }}</a>
-                    </li>
-                {% else %}
-                    <li class="active">
-                        {{ breadcrumb.name }}
-                    </li>
-                {% endif %}
-            {% endfor %}
-        </ul>
-    </div>
+<ul class="breadcrumb">
+    {% for breadcrumb in request.breadcrumbs %}
+        {% if not forloop.last %}
+            <li>
+                <a href="{{ breadcrumb.url }}">{{ breadcrumb.name }}</a>
+            </li>
+        {% else %}
+            <li class="active">
+                {{ breadcrumb.name }}
+            </li>
+        {% endif %}
+    {% endfor %}
+</ul>
 {% endif %}
