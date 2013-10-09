@@ -6,7 +6,7 @@ from django.utils.html import conditional_escape
 from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext
 
-from poslima.core.utils import helpers
+from pragmatic import helpers
 
 register = template.Library()
 
