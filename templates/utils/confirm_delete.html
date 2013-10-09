@@ -1,0 +1,28 @@
+{% extends 'standard.html' %}
+{% load i18n admin_extras %}
+
+{% block title %}{{ title }}{% endblock %}
+{% block page_title %}{{ title }}{% endblock %}
+{% block page_action %}
+{% endblock %}
+
+{% block content %}
+
+<div class="info col-md-12">
+    {% box %}
+        <form action="{{ request.get_full_path }}" method="post" enctype="multipart/form-data" >
+            {% csrf_token %}
+
+            {% blocktrans with object=object %}Are you sure you want to delete <strong>{{ object }}</strong>?{% endblocktrans %}
+
+            <div class="form-actions">
+                <div class="btn-group">
+                    <input type="submit" value="{% trans 'Yes' %}" class="btn btn-large btn-danger" />
+                    <a href="{{ back_url }}" class="btn btn-large btn-primary">{% trans 'No' %}</a>
+                </div>
+            </div>
+        </form>
+    {% endbox %}
+</div>
+
+{% endblock %}
