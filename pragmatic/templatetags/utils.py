@@ -139,3 +139,21 @@ def subtract(value, arg):
         return float(value) - float(arg)
     except (ValueError, TypeError):
         return ''
+
+
+@register.tag
+def capture(parser, token):
+    nodelist = parser.parse(('endcapture',))
+    parser.delete_first_token()
+    varname = token.contents.split()[1]
+    return CaptureNode(nodelist, varname)
+
+
+class CaptureNode(template.Node):
+    def __init__(self, nodelist, varname):
+        self.nodelist = nodelist
+        self.varname = varname
+
+    def render(self, context):
+        context[self.varname] = self.nodelist.render(context)
+        return ''

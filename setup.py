@@ -1,19 +1,10 @@
 #!/usr/bin/env python
-import os
 from setuptools import setup
-
-
-# Utility function to read the README file.
-# Used for the long_description.  It's nice, because now 1) we have a top level
-# README file and 2) it's easier to type in the README file than to put a raw
-# string in below ...
-def read(filename):
-    return open(os.path.join(os.path.dirname(__file__), filename)).read()
 
 
 setup(
     name='django-pragmatic',
-    version='0.1a',
+    version='0.2a',
     description='Pragmatic tools and utilities for Django projects',
     author='Pragmatic Mates',
     author_email='info@pragmaticmates.com',
@@ -26,7 +17,6 @@ setup(
     ],
     include_package_data=True,
     install_requires=('South', 'django_filters', 'django'),
-    long_description=read('README.md'),
     classifiers=[
         'Programming Language :: Python',
         'Programming Language :: Python :: 2.5',
