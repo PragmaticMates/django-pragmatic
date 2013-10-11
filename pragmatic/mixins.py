@@ -18,8 +18,9 @@ class ReadOnlyFormMixin(forms.BaseForm):
 
     def __init__(self, *args, **kwargs):
         super(ReadOnlyFormMixin, self).__init__(*args, **kwargs)
+        without_instance = self.read_only_without_instance if hasattr(self, "read_only_without_instance") else False
         if hasattr(self, "read_only"):
-            if self.instance and self.instance.pk:
+            if self.instance and self.instance.pk or without_instance:
                 for field in self.read_only:
                     self.fields[field].widget.attrs['readonly'] = True
                     self.fields[field].widget.attrs['disabled'] = True
