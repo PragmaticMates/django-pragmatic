@@ -4,7 +4,6 @@ from django import forms
 from django.conf import settings
 from django.contrib import messages
 from django.db.models.deletion import ProtectedError
-from django.forms.widgets import HiddenInput
 from django.http.response import HttpResponseRedirect, HttpResponse
 from django.utils import timezone, six
 from django.utils.translation import ugettext_lazy as _
@@ -26,41 +25,6 @@ class ReadOnlyFormMixin(forms.BaseForm):
                     self.fields[field].widget.attrs['disabled'] = True
                     self.fields[field].required = False
                     setattr(self, "clean_" + field, self._get_cleaner(field))
-
-
-class RestrictUserMixin(object):
-    def set_choices_or_queryset(self, field, choices, queryset, num_fields):
-        hide_field = False
-        if choices is not None:
-            field.choices = choices
-            hide_field = len(choices) <= 1
-        if queryset is not None:
-            field.queryset = queryset
-            hide_field = hide_field or queryset.count() <= 1
-        if hide_field and num_fields > 1:
-            field.widget = HiddenInput()
-
-    def restrict_user(self, request, empty_value=False, empty_label=_(u'Select client')):
-        # restrict user clients
-        client = request.user.get_selected_client(request)
-        choices = None
-        queryset = None
-
-        if client is not None:
-            # choices
-            choices = (('', empty_label),) if empty_value else ()
-            choices += ((client.pk, client), )
-        else:
-            # queryset
-            if not (request.user.is_admin or request.user.is_superadmin):
-                queryset = request.user.get_clients()
-
-        try:
-            # filter
-            self.set_choices_or_queryset(self.form.fields['client'], choices, queryset, len(self.form.fields))
-        except AttributeError:
-            # form
-            self.set_choices_or_queryset(self.fields['client'], choices, queryset, len(self.fields))
 
 
 class DeleteObjectMixin(object):
