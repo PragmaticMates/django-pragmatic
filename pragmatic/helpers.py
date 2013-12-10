@@ -15,6 +15,6 @@ def round_to_n_decimal_places(value, n):
 
 
 def generate_hash(length=5):
-    salt = hashlib.sha1(str(random.random())).hexdigest()[:length]
+    salt = hashlib.sha1(str(random.random())).hexdigest()
     pepper = str(now())
-    return hashlib.sha1(salt + pepper).hexdigest()
+    return hashlib.sha1(salt + pepper).hexdigest()[:length]

@@ -60,7 +60,9 @@ class DeleteObjectMixin(object):
 class PickadayFormMixin(object):
     def fix_fields(self, *args, **kwargs):
         for field_name in self.fields:
-            if isinstance(self.fields[field_name], forms.fields.DateField):
+            is_datefield = isinstance(self.fields[field_name], forms.fields.DateField)
+            is_datetimefield = isinstance(self.fields[field_name], forms.fields.DateTimeField)
+            if is_datefield or is_datetimefield:
                 self.fix_field(field_name, *args, **kwargs)
 
     def fix_field(self, field_name, *args, **kwargs):
@@ -72,12 +74,14 @@ class PickadayFormMixin(object):
         if not date and kwargs.get('instance', None) is not None:
             instance = kwargs.get('instance')
             date = getattr(instance, field_name)
+        elif not date and self.instance is not None:
+            date = getattr(self.instance, field_name)
         if date:
             if type(date) == datetime.date:
                 # convert date to datetime
                 date = datetime.datetime.combine(date, datetime.time(0, 0))
                 # convert from naive to aware (without pytz)
-                date = date.replace(tzinfo = timezone.utc)
+                date = date.replace(tzinfo=timezone.utc)
 
                 # convert from naive to aware (with pytz)
 #                import pytz
@@ -107,10 +111,10 @@ class FPDFMixin(object):
         (ORIENTATION_LANDSCAPE, _(u'Landscape'))
     )
     orientation = ORIENTATION_PORTRAIT
-    marginLeft = 8
-    marginRight = 8
-    marginTop = 8
-    marginBottom = 8
+    margin_left = 8
+    margin_right = 8
+    margin_top = 8
+    margin_bottom = 8
 
     def render(self, **kwargs):
         # Go through keyword arguments, and either save their values to our
@@ -134,22 +138,34 @@ class FPDFMixin(object):
         return self.response
 
     def get_filename(self):
-        return 'doc.pdf'
+        return 'document.pdf'
 
     def init_sizes(self):
+        # page sizes
         self.page_width = self.FORMATS[self.format]['width']
         self.page_height = self.FORMATS[self.format]['height']
         if self.orientation == 'L':
             self.page_width, self.page_height = self.page_height, self.page_width
 
-        self.contentWidth = self.page_width - self.marginLeft - self.marginRight
-        self.contentHeight = self.page_height - self.marginTop - self.marginBottom
+        # content sizes
+        self.content_width = self.page_width - self.margin_left - self.margin_right
+        self.content_height = self.page_height - self.margin_top - self.margin_bottom
+
+    def get_pdf_instance(self):
+        from fpdf import FPDF, HTMLMixin
+        class MyFPDF(FPDF, HTMLMixin):
+            pass
+        page_format = dict(self.FORMATS).get(self.format, None)
+        if page_format is not None:
+            pdf = MyFPDF(self.orientation, 'mm', (page_format['width'], page_format['height']))
+        else:
+            pdf = MyFPDF(self.orientation, 'mm', self.format)
+        return pdf
 
     def init_pdf(self):
-        from fpdf import FPDF
-        self.pdf = FPDF(self.orientation, 'mm', self.format)
-        self.pdf.set_margins(self.marginLeft, self.marginTop, self.marginRight)
-        self.pdf.set_auto_page_break(True, margin=self.marginBottom)
+        self.pdf = self.get_pdf_instance()
+        self.pdf.set_margins(self.margin_left, self.margin_top, self.margin_right)
+        self.pdf.set_auto_page_break(True, margin=self.margin_bottom)
         self.pdf.add_page()
 
     def write_pdf_content(self):
