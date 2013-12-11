@@ -1,2 +1,3 @@
 include README.rst
 recursive-include pragmatic/templates *
+recursive-include pragmatic/static *
