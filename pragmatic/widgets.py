@@ -22,22 +22,23 @@ class GroupedCheckboxSelectMultiple(CheckboxSelectMultiple):
 
         ), widget=GroupedCheckboxSelectMultiple(attrs={
             'groups': (
-                (_(u'Group 1'), {
+                (ugettext(u'Group 1'), {
                     'classes': ('col-md-3', ),
                     'choices': (('a', 'a'), ('b', 'b'), ),
                 }),
 
-                (_(u'Group 2'), {
+                (ugettext(u'Group 2'), {
                     'classes': ('col-md-3', ),
+                    'predefined_values': 'all'|None,
                     'choices': (('c', 'c'), ('d', 'd'), ),
                 }),
 
-                (_(u'Group 3'), {
+                (ugettext(u'Group 3'), {
                     'classes': ('col-md-3', ),
                     'choices': (('e', 'e'), ('f', 'f'), ),
                 }),
 
-                (_(u'Group 4'), {
+                (ugettext(u'Group 4'), {
                     'classes': ('col-md-3', ),
                     'choices': (('g', 'g'), ('h', 'h'), ),
                 }),
@@ -54,8 +55,8 @@ class GroupedCheckboxSelectMultiple(CheckboxSelectMultiple):
         has_id = attrs and 'id' in attrs
         final_attrs = self.build_attrs(attrs, name=name)
 
+        # No groups in widget so render checkboxes in normal way
         if 'groups' not in final_attrs:
-
             output = []
             # Normalize to strings
             str_values = set([force_text(v) for v in value])
@@ -87,7 +88,8 @@ class GroupedCheckboxSelectMultiple(CheckboxSelectMultiple):
             group_id = 'group_%i' % group_index
 
             result = ['<ul class="list-group">']
-            open_group = False
+
+            has_opened_checkboxes = False
             for checkbox_index, (option_value, option_label) in enumerate(group[1]['choices']):
                 if has_id:
                     final_attrs = dict(final_attrs, id='%s_%s_%s' % (attrs['id'], group_index, checkbox_index))
@@ -96,7 +98,36 @@ class GroupedCheckboxSelectMultiple(CheckboxSelectMultiple):
                     label_for = ''
 
                 cb = CheckboxInput(final_attrs, check_test=lambda value: value in str_values)
-                if cb.check_test(option_value):
+                if cb.check_test(str(option_value)):
+                    has_opened_checkboxes = True
+                    break
+
+            open_group = False
+            for checkbox_index, (option_value, option_label) in enumerate(group[1]['choices']):
+                if has_id:
+                    final_attrs = dict(final_attrs, id='%s_%s_%s' % (attrs['id'], group_index, checkbox_index))
+                    label_for = format_html(' for="{0}"', final_attrs['id'])
+                else:
+                    label_for = ''
+
+                if 'on_open' in final_attrs:
+                    del final_attrs['on_open']
+
+                if has_opened_checkboxes is False and 'predefined_values_on_open' in group[1]:
+                    predefined_values = group[1]['predefined_values_on_open']
+
+                    if type(predefined_values) == str:
+                        if predefined_values == 'all':
+                            final_attrs['on_open'] = 'checked'
+                    elif type(predefined_values) == list or type(predefined_values) == tuple:
+                        if option_value in predefined_values:
+                            final_attrs['on_open'] = 'checked'
+
+
+                cb = CheckboxInput(final_attrs, check_test=lambda value: value in str_values)
+
+
+                if cb.check_test(str(option_value)):
                     open_group = True
 
                 option_value = force_text(option_value)
