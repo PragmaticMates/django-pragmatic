@@ -26,5 +26,9 @@ $(document).ready(function() {
                 });
             }
         });
+
+        $('input[type=checkbox]', this).change(function() {
+            $('input[type=checkbox][value='+$(this).val()+']').prop('checked', $(this).prop('checked')).closest('div').toggleClass('ez-checked');
+        });
     });
 });
