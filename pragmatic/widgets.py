@@ -132,8 +132,7 @@ class GroupedCheckboxSelectMultiple(CheckboxSelectMultiple):
                 option_value = force_text(option_value)
                 rendered_cb = cb.render(name, option_value)
                 option_label = force_text(option_label)
-                result.append(format_html('<li class="list-group-item"><div class="checkbox"><label{0}>{1} {2}</label></div></li>',
-                                          label_for, rendered_cb, option_label))
+                result.append('<li class="list-group-item"><div class="checkbox"><label%s>%s %s</label></div></li>' % (label_for, rendered_cb, option_label))
             result.append('</ul>')
 
             output.append('<div class="group %(classes)s"><div class="panel panel-primary"><div class="panel-heading">%(toggle)s</div>%(result)s</div></div>' % {
