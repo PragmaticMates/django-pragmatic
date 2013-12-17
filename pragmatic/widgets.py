@@ -29,7 +29,7 @@ class GroupedCheckboxSelectMultiple(CheckboxSelectMultiple):
 
                 (ugettext(u'Group 2'), {
                     'classes': ('col-md-3', ),
-                    'predefined_values': 'all'|None,
+                    'predefined_values_on_open': 'all'|None|list(),
                     'choices': (('c', 'c'), ('d', 'd'), ),
                 }),
 
