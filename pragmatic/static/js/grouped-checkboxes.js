@@ -20,9 +20,9 @@ $(document).ready(function() {
                 $(this).closest('.group').find('.list-group').hide();
 
                 $(this).closest('.group').find('.list-group input[type=checkbox]').each(function() {
-                    if ($(this).attr('on_open') == 'checked') {
+//                    if ($(this).attr('on_open') == 'checked') {
                         $(this).prop('checked', false).change();
-                    }
+//                    }
                 });
             }
         });
