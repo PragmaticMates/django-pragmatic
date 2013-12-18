@@ -28,7 +28,14 @@ $(document).ready(function() {
         });
 
         $('input[type=checkbox]', this).change(function() {
-            $('input[type=checkbox][value='+$(this).val()+']').prop('checked', $(this).prop('checked')).closest('div').toggleClass('ez-checked');
+            var is_checked = $(this).prop('checked');
+            var with_same_value = $('input[type=checkbox][value='+$(this).val()+']');
+            with_same_value.prop('checked', is_checked);
+            if(is_checked) {
+                with_same_value.closest('div').addClass('ez-checked');
+            } else {
+                with_same_value.closest('div').removeClass('ez-checked');
+            }
         });
     });
 });
