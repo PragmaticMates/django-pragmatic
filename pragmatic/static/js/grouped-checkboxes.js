@@ -21,7 +21,7 @@ $(document).ready(function() {
             // open
             $('.list-group', this).show();
             $('.toggler', this).addClass('open');
-            $('.toggler').hide();
+            $('.toggler', this).hide();
         } else {
             // closed
             $('.list-group', this).hide();
