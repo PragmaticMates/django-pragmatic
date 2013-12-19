@@ -1,4 +1,5 @@
 from itertools import chain
+
 from django.forms.widgets import CheckboxSelectMultiple, CheckboxInput
 from django.utils.encoding import force_text
 from django.utils.html import format_html
@@ -29,7 +30,7 @@ class GroupedCheckboxSelectMultiple(CheckboxSelectMultiple):
 
                 (ugettext(u'Group 2'), {
                     'classes': ('col-md-3', ),
-                    'predefined_values_on_open': 'all'|None|list(),
+                    'predefined_values_on_check': 'all'|None|list(),
                     'choices': (('c', 'c'), ('d', 'd'), ),
                 }),
 
@@ -109,18 +110,18 @@ class GroupedCheckboxSelectMultiple(CheckboxSelectMultiple):
                 else:
                     label_for = ''
 
-                if 'on_open' in final_attrs:
-                    del final_attrs['on_open']
+                if 'on_check' in final_attrs:
+                    del final_attrs['on_check']
 
-                if has_opened_checkboxes is False and 'predefined_values_on_open' in group[1]:
-                    predefined_values = group[1]['predefined_values_on_open']
+                if has_opened_checkboxes is False and 'predefined_values_on_check' in group[1]:
+                    predefined_values = group[1]['predefined_values_on_check']
 
                     if type(predefined_values) == str:
                         if predefined_values == 'all':
-                            final_attrs['on_open'] = 'checked'
+                            final_attrs['on_check'] = 'checked'
                     elif type(predefined_values) == list or type(predefined_values) == tuple:
                         if option_value in predefined_values:
-                            final_attrs['on_open'] = 'checked'
+                            final_attrs['on_check'] = 'checked'
 
 
                 cb = CheckboxInput(final_attrs, check_test=lambda value: value in str_values)
@@ -135,8 +136,8 @@ class GroupedCheckboxSelectMultiple(CheckboxSelectMultiple):
                 result.append('<li class="list-group-item"><div class="checkbox"><label%s>%s %s</label></div></li>' % (label_for, rendered_cb, option_label))
             result.append('</ul>')
 
-            output.append('<div class="group %(classes)s"><div class="panel panel-primary"><div class="panel-heading">%(toggle)s</div>%(result)s</div></div>' % {
-                'toggle': '<h4 class="panel-title checkbox"><label for="%(group_id)s">%(title)s</label></h4>' % {
+            output.append('<div class="group %(classes)s"><div class="panel panel-primary"><div class="panel-heading">%(heading)s</div>%(result)s</div></div>' % {
+                'heading': '<h4 class="panel-title checkbox"><label for="%(group_id)s">%(title)s</label></h4><a href="#" class="toggler"></a>' % {
                     'group_id': group_id,
                     'title': CheckboxInput().render(group_id, open_group, attrs={
                         'id': group_id,
