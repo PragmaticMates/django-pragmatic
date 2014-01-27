@@ -1,0 +1,46 @@
+{% load i18n %}
+
+<div class="center">
+    <ul class="pagination">
+        {% if has_previous %}
+            <li class="button left"><a href="?{{ page_ident }}={{ previous }}{% for key,value in request.GET.items %}{% ifnotequal key 'page' %}&{{ key }}={{ value }}{% endifnotequal %}{% endfor %}"><i class="icon-normal-left-arrow"></i></a></li>
+        {% else %}
+            <li class="button left disabled"><a><i class="icon-normal-left-arrow"></i></a></li>
+        {% endif %}
+
+        {% if show_first %}
+            <li><a href="?{{ page_ident }}=1{% for key,value in request.GET.items %}{% ifnotequal key 'page' %}&{{ key }}={{ value }}{% endifnotequal %}{% endfor %}">1</a></li>
+            {% if show_left_dots %}
+                <li class="disabled dots"><a>...</a></li>
+            {% endif %}
+        {% endif %}
+
+        {% for linkpage in page_numbers %}
+            {% ifequal linkpage page %}
+                <li class="active disabled">
+                    <a>
+                        {{ page }}
+                        <span></span>
+                    </a>
+                </li>
+            {% else %}
+                <li><a href="?{{ page_ident }}={{ linkpage }}{% for key,value in request.GET.items %}{% ifnotequal key 'page' %}&{{ key }}={{ value }}{% endifnotequal %}{% endfor %}">{{ linkpage }}<span></span></a></li>
+            {% endifequal %}
+        {% endfor %}
+
+
+        {% if show_last %}
+            {% if show_right_dots %}
+                <li class="dots"><a>...</a></li>
+            {% endif %}
+
+            <li><a href="?{{ page_ident }}={{ count }}{% for key,value in request.GET.items %}{% ifnotequal key 'page' %}&{{ key }}={{ value }}{% endifnotequal %}{% endfor %}">{{ count }}<span></span></a></li>
+        {% endif %}
+
+        {% if has_next %}
+            <li class="button right"><a href="?{{ page_ident }}={{ next }}{% for key,value in request.GET.items %}{% ifnotequal key 'page' %}&{{ key }}={{ value }}{% endifnotequal %}{% endfor %}"><i class="icon-normal-right-arrow"></i></a></li>
+        {% else %}
+            <li class="button right disabled"><a><i class="icon-normal-right-arrow"></i></a></li>
+        {% endif %}
+    </ul>
+</div>

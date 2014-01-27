@@ -4,7 +4,29 @@ from django.utils.text import capfirst
 from django.core import exceptions
 from django.core.exceptions import ValidationError
 from django.core.validators import EMPTY_VALUES
+from django.utils.encoding import smart_text
 from django.utils.translation import ugettext_lazy as _
+
+
+class TruncatedModelChoiceField(forms.ModelChoiceField):
+    def __init__(self, queryset, empty_label="---------", cache_choices=False,
+                 truncate_suffix='...', truncate_chars=None,
+                 required=True, widget=None, label=None, initial=None,
+                 help_text=None, to_field_name=None, *args, **kwargs):
+
+        self.truncate_chars = truncate_chars
+        self.truncate_suffix = truncate_suffix
+
+        super(TruncatedModelChoiceField, self).__init__(queryset,
+            empty_label=empty_label, cache_choices=cache_choices,
+            required=required, widget=widget, label=label, initial=initial,
+            help_text=help_text, to_field_name=to_field_name, *args, **kwargs)
+
+    def label_from_instance(self, obj):
+        if self.truncate_chars:
+            return smart_text(obj)[:self.truncate_chars] +\
+                   (smart_text(obj)[self.truncate_chars:] and self.truncate_suffix)
+        return smart_text(obj)
 
 
 class RangeField(forms.Field):

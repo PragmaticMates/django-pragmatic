@@ -57,7 +57,7 @@ class DeleteObjectMixin(object):
         return context_data
 
 
-class PickadayFormMixin(object):
+class PickadateFormMixin(object):
     def fix_fields(self, *args, **kwargs):
         for field_name in self.fields:
             is_datefield = isinstance(self.fields[field_name], forms.fields.DateField)
