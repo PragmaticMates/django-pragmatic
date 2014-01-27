@@ -32,19 +32,19 @@ Usage
 Templates
 '''''''''
 ``pragmatic/helpers/breadcrumbs.html``
-    Template helper for **django-breadcrumbs** app
+    Template helper for **django-breadcrumbs** app.
 
 ``pragmatic/helpers/confirm_delete.html``
-    Form for delete confirmation
+    Form for delete confirmation.
 
 ``pragmatic/helpers/messages.html``
-    Template helper for django messages framework
+    Template helper for django messages framework.
 
 ``pragmatic/helpers/pagination.html``
-    Template helper for paginating objects in ListViews
+    Template helper for paginating objects in ListViews.
 
 ``pragmatic/helpers/pagination-listview.html``
-    Template helper for paginating objects in ListViews
+    Template helper for paginating objects in ListViews.
 
 
 Template tags
@@ -55,7 +55,7 @@ Template tags
     Returns string of instance class name.
 
 ``def bootstrap3_field(field)``
-    Adds '*form-control*' class to field widget classes.
+    Adds *form-control* class to field widget classes.
 
 ``def filtered_objects_counts(filtered, all)``
     Returns translatable percentage description of value filtered/all in this format:
@@ -168,15 +168,11 @@ Mixins
     and ``get_back_url()`` methods instead.
 
 ``class PickadateFormMixin(object)``
-    Mixin which fixes *pickadate.js* inputs and adds **data-value** attribute to them if you use your own date formats.
+    Mixin which fixes **pickadate.js** inputs and adds *data-value* attribute to them if you use your own date formats.
 
 ``class FPDFMixin(object)``
     Mixin helper for generating PDF outputs in Django using fpdf library.
 
-
-Signals
-'''''''
-``def receiver_subclasses``
 
 
 Thirdparty
@@ -187,4 +183,4 @@ Thirdparty
 
 ``class GroupedCheckboxSelectMultiple(CheckboxSelectMultiple)``
     Advanced form field widget for grouping multiple choices into custom groups.
-    Use it with *static/js/grouped-checkboxes.js*
+    Use it with **static/js/grouped-checkboxes.js**
