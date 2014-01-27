@@ -174,13 +174,14 @@ Mixins
     Mixin helper for generating PDF outputs in Django using fpdf library.
 
 
+Widgets
+'''''''
+``class GroupedCheckboxSelectMultiple(CheckboxSelectMultiple)``
+    Advanced form field widget for grouping multiple choices into custom groups.
+    Use it with **static/js/grouped-checkboxes.js**
+
 
 Thirdparty
 ''''''''''
 ``class BarcodeImageWriter(ImageWriter)``
     Fixed version of barcode.writer.ImageWriter.
-
-
-``class GroupedCheckboxSelectMultiple(CheckboxSelectMultiple)``
-    Advanced form field widget for grouping multiple choices into custom groups.
-    Use it with **static/js/grouped-checkboxes.js**
