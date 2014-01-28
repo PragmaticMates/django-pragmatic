@@ -58,10 +58,11 @@ class DeleteObjectMixin(object):
 
 
 class PickadayFormMixin(object):
-    def fix_fields(self, *args, **kwargs):
-        for field_name in self.fields:
-            is_datefield = isinstance(self.fields[field_name], forms.fields.DateField)
-            is_datetimefield = isinstance(self.fields[field_name], forms.fields.DateTimeField)
+    def fix_fields(self, form=None, *args, **kwargs):
+        self.field_array = form.fields if form else self.fields
+        for field_name in self.field_array:
+            is_datefield = isinstance(self.field_array[field_name], forms.fields.DateField)
+            is_datetimefield = isinstance(self.field_array[field_name], forms.fields.DateTimeField)
             if is_datefield or is_datetimefield:
                 self.fix_field(field_name, *args, **kwargs)
 
@@ -74,7 +75,7 @@ class PickadayFormMixin(object):
         if not date and kwargs.get('instance', None) is not None:
             instance = kwargs.get('instance')
             date = getattr(instance, field_name)
-        elif not date and self.instance is not None:
+        elif not date and getattr(self, 'instance', None) is not None:
             date = getattr(self.instance, field_name)
         if date:
             if type(date) == datetime.date:
@@ -91,7 +92,7 @@ class PickadayFormMixin(object):
                 # get date in custom format in local time
                 date = timezone.localtime(date)
                 date = date.strftime(settings.DATE_FORMAT)
-            self.fields[field_name].widget.attrs['data-value'] = date
+            self.field_array[field_name].widget.attrs['data-value'] = date
 
 
 class FPDFMixin(object):
