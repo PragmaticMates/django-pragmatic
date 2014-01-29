@@ -143,6 +143,17 @@ def subtract(value, arg):
 
 @register.tag
 def capture(parser, token):
+    """
+    Capture contents of block into context
+    --------------------------------------
+
+    Use case: variable accessing based on current variable values.
+
+    {% capture foo %}{{ foo.value }}-suffix{% endcapture %}
+    {% if foo in bar %}{% endif %}
+
+    Created on Monday, February 2012 by Yuji Tomita
+    """
     nodelist = parser.parse(('endcapture',))
     parser.delete_first_token()
     varname = token.contents.split()[1]
