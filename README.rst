@@ -46,6 +46,9 @@ Templates
 ``pragmatic/helpers/pagination-listview.html``
     Template helper for paginating objects in ListViews.
 
+``maintenance_mode.html``
+    Template for maintenance mode. See **MaintenanceModeMiddleware** below.
+
 
 Template tags
 '''''''''''''
@@ -156,6 +159,13 @@ Helpers
 
 ``def barcode(code, args=None)``
     Returns barcode as string encoded in base64 format.
+
+
+Middleware
+''''''''''
+``class MaintenanceModeMiddleware(object)``
+    It looks for ``settings.MAINTENANCE_MODE`` attribute. If it is set to True,
+      template **maintenance_mode.html** will render for each request.
 
 
 Mixins
