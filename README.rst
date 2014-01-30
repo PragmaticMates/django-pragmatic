@@ -145,7 +145,7 @@ Filters
 
 Helpers
 '''''''
-``def base64_to_file(content, filepath):``
+``def base64_to_file(content, filepath)``
     Stores base64 encoded content to file.
 
 ``def round_to_n_decimal_places(value, n)``
@@ -164,8 +164,8 @@ Helpers
 Middleware
 ''''''''''
 ``class MaintenanceModeMiddleware(object)``
-    It looks for ``settings.MAINTENANCE_MODE`` attribute. If it is set to True,
-      template **maintenance_mode.html** will render for each request.
+    It looks for ``settings.MAINTENANCE_MODE`` attribute.
+    If it is set to True, template **maintenance_mode.html** will render for each request.
 
 
 Mixins
