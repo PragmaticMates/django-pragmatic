@@ -168,6 +168,14 @@ Middleware
     If it is set to True, template **maintenance_mode.html** will render for each request.
 
 
+Loghandlers
+'''''''''''
+``class AlternativeAdminEmailHandler(AdminEmailHandler)``
+    Same as ``django.utils.log import AdminEmailHandler``, but uses ``ALTERNATE_EMAIL_HOST_PASSWORD``,
+    ``ALTERNATE_EMAIL_HOST_USER``,  ``ALTERNATE_EMAIL_HOST``, ``ALTERNATE_EMAIL_PORT`` and
+    ``ALTERNATE_EMAIL_USE_TLS`` as connection settings.
+
+
 Mixins
 ''''''
 ``class ReadOnlyFormMixin(forms.BaseForm)``
