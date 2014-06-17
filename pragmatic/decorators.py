@@ -42,7 +42,7 @@ def permission_required(perm, login_url=None, raise_exception=False):
             try:
                 app_label, codename = perm.split('.')
                 permission = Permission.objects.get(content_type__app_label=app_label, codename=codename)
-            except ObjectDoesNotExist:
+            except (ObjectDoesNotExist, ValueError):
                 permission = perm
             user.permission_error = permission
             raise PermissionDenied
