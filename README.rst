@@ -143,8 +143,12 @@ Filters
 
 
 
-Helpers
-'''''''
+Helpers (DEPRECATED)
+''''''''''''''''''''
+These helpers are DEPRECATED and will be removed in future versions.
+Please, install package ``python-pragmatic`` instead.
+
+
 ``def base64_to_file(content, filepath)``
     Stores base64 encoded content to file.
 

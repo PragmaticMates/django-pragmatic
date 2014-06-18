@@ -4,7 +4,7 @@ from setuptools import setup
 
 setup(
     name='django-pragmatic',
-    version='1.1.1',
+    version='1.2.0',
     description='Pragmatic tools and utilities for Django projects',
     long_description=open('README.rst').read(),
     author='Pragmatic Mates',
@@ -17,7 +17,7 @@ setup(
         'pragmatic.templatetags'
     ],
     include_package_data=True,
-    install_requires=('South', 'django-filter', 'django'),
+    install_requires=('South', 'django-filter', 'django', 'python-pragmatic'),
     classifiers=[
         'Programming Language :: Python',
         'Programming Language :: Python :: 2.5',
