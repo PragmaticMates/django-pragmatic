@@ -2,7 +2,7 @@ from django.contrib.auth.decorators import user_passes_test
 from django.contrib.auth.models import Permission
 from django.core.exceptions import PermissionDenied, ObjectDoesNotExist
 
-from helpers import get_subclasses
+from python_pragmatic.classes import get_subclasses
 
 
 def permissions_required(app_label, login_url=None, raise_exception=False):

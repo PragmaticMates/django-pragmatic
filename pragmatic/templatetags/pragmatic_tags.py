@@ -6,10 +6,9 @@ from django.utils.html import conditional_escape
 from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext
 
-from pragmatic import helpers
-
 register = template.Library()
 
+from python_pragmatic.strings import barcode as pragmatic_barcode
 
 @register.filter('klass')
 def klass(ob):
@@ -62,7 +61,7 @@ def qrcode(value, alt=None):
 @register.filter
 @stringfilter
 def barcode(code, args=None):
-    barcode = helpers.barcode(code, args)
+    barcode = pragmatic_barcode(code, args)
     # return as HTML element
     return mark_safe('<img src="data:image/png;base64,' + barcode + '" />')
 

@@ -142,29 +142,6 @@ Filters
     Filter field for RangeField.
 
 
-
-Helpers (DEPRECATED)
-''''''''''''''''''''
-These helpers are DEPRECATED and will be removed in future versions.
-Please, install package ``python-pragmatic`` instead.
-
-
-``def base64_to_file(content, filepath)``
-    Stores base64 encoded content to file.
-
-``def round_to_n_decimal_places(value, n)``
-    Returns number rounded to n decimal places.
-
-``def generate_hash(length=5)``
-    Returns random generated string
-
-``def get_subclasses(classes, level=0)``
-    Return the list of all subclasses given class (or list of classes) has.
-
-``def barcode(code, args=None)``
-    Returns barcode as string encoded in base64 format.
-
-
 Middleware
 ''''''''''
 ``class MaintenanceModeMiddleware(object)``
