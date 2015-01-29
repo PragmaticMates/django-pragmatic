@@ -140,6 +140,11 @@ def subtract(value, arg):
         return ''
 
 
+@register.filter()
+def translate(text):
+    return ugettext(text)
+
+
 @register.tag
 def capture(parser, token):
     """

@@ -57,6 +57,9 @@ Template tags
 ``def klass(obj)``
     Returns string of instance class name.
 
+``def translate(obj)``
+    Returns translated string of input value (string or any object).
+
 ``def bootstrap3_field(field)``
     Adds *form-control* class to field widget classes.
 
