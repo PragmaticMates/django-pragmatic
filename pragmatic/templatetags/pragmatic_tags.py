@@ -1,3 +1,4 @@
+import os
 import urllib
 
 from django import template
@@ -143,6 +144,11 @@ def subtract(value, arg):
 @register.filter()
 def translate(text):
     return ugettext(text)
+
+
+@register.filter
+def filename(value):
+    return os.path.basename(value.file.name)
 
 
 @register.tag

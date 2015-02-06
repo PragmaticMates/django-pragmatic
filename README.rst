@@ -60,6 +60,9 @@ Template tags
 ``def translate(obj)``
     Returns translated string of input value (string or any object).
 
+``def filename(obj)``
+    Returns name of the file without its path (basename).
+
 ``def bootstrap3_field(field)``
     Adds *form-control* class to field widget classes.
 
