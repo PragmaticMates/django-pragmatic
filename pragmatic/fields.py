@@ -142,12 +142,22 @@ class MultiSelectField(models.Field):
         value = self._get_val_from_obj(obj)
         return self.get_db_prep_value(value)
 
+    def deconstruct(self):
+        """
+        to support Django 1.7 migrations, see also the add_introspection_rules
+        section at bottom of this file for South + earlier Django versions
+        """
+        name, path, args, kwargs = super(MultiSelectField, self).deconstruct()
+        return name, path, args, kwargs
+
 
 # needed for South compatibility
 
-from south.modelsinspector import add_introspection_rules
-add_introspection_rules([], ["^pragmatic\.fields\.MultiSelectField"])
-
+try:
+    from south.modelsinspector import add_introspection_rules
+    add_introspection_rules(rules=[], patterns=["^pragmatic\.fields\.MultiSelectField"])
+except ImportError:
+    pass
 
 # Example Model
 
