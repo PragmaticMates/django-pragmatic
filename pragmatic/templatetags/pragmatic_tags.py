@@ -148,7 +148,10 @@ def translate(text):
 
 @register.filter
 def filename(value):
-    return os.path.basename(value.file.name)
+    try:
+        return os.path.basename(unicode(value.file.name))
+    except:
+        return value
 
 
 @register.tag
