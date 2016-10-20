@@ -9,7 +9,7 @@ from django.utils.translation import ugettext_lazy as _
 
 
 class TruncatedModelChoiceField(forms.ModelChoiceField):
-    def __init__(self, queryset, empty_label="---------", cache_choices=False,
+    def __init__(self, queryset, empty_label="---------",
                  truncate_suffix='...', truncate_chars=None,
                  required=True, widget=None, label=None, initial=None,
                  help_text=None, to_field_name=None, *args, **kwargs):
@@ -18,8 +18,7 @@ class TruncatedModelChoiceField(forms.ModelChoiceField):
         self.truncate_suffix = truncate_suffix
 
         super(TruncatedModelChoiceField, self).__init__(queryset,
-            empty_label=empty_label, cache_choices=cache_choices,
-            required=required, widget=widget, label=label, initial=initial,
+            empty_label=empty_label, required=required, widget=widget, label=label, initial=initial,
             help_text=help_text, to_field_name=to_field_name, *args, **kwargs)
 
     def label_from_instance(self, obj):
@@ -82,8 +81,6 @@ class MultiSelectFormField(forms.MultipleChoiceField):
 
 
 class MultiSelectField(models.Field):
-    __metaclass__ = models.SubfieldBase
-
     def get_internal_type(self):
         return "CharField"
 
@@ -116,6 +113,9 @@ class MultiSelectField(models.Field):
         if value is not None:
             return value if isinstance(value, list) else value.split(',')
         return ''
+
+    def from_db_value(self, value, expression, connection, context):
+        return value
 
     def contribute_to_class(self, cls, name):
         super(MultiSelectField, self).contribute_to_class(cls, name)
