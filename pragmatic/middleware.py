@@ -3,8 +3,14 @@ from django.http import HttpResponse
 from django.template import loader, RequestContext
 from django.template.response import SimpleTemplateResponse
 
+try:
+    from django.utils.deprecation import MiddlewareMixin
+except ImportError:  # Django < 1.10
+    # Works perfectly for everyone using MIDDLEWARE_CLASSES
+    MiddlewareMixin = object
 
-class MaintenanceModeMiddleware(object):
+
+class MaintenanceModeMiddleware(MiddlewareMixin):
     template_name = 'maintenance_mode.html'
 
     def process_response(self, request, response):
