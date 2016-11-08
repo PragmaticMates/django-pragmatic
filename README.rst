@@ -3,7 +3,7 @@ django-pragmatic
 
 Pragmatic tools and utilities for Django projects
 
-Tested on Django 1.5.
+Tested on Django 1.5 up to Django 1.10.2
 
 
 Requirements
