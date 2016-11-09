@@ -1,3 +1,6 @@
+.. image:: https://travis-ci.org/PragmaticMates/django-pragmatic.svg?branch=master
+    :target: https://travis-ci.org/PragmaticMates/django-pragmatic
+
 django-pragmatic
 ================
 
