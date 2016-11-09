@@ -1,0 +1,30 @@
+#sudo: false
+language: python
+python:
+  - "2.5"
+  - "2.6"
+  - "2.7"
+  - "3.2"
+  - "3.3"
+  - "3.4"
+  - "3.5"
+  - "3.5-dev" # 3.5 development branch
+  - "3.6-dev" # 3.6 development branch
+  - "nightly" # currently points to 3.7-dev
+#services:
+#  - redis
+env:
+  - DJANGO=1.7.8
+  - DJANGO=1.8.6
+  - DJANGO=1.9.10
+  - DJANGO=1.10.2
+# command to install dependencies
+install:
+  - pip install .
+  - pip install -q Django==$DJANGO
+# command to run tests
+before_script:
+  - pip freeze
+#script:
+#  - pytest
+#  - python setup.py test
