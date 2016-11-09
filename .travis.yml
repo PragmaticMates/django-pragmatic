@@ -24,6 +24,6 @@ install:
 # command to run tests
 before_script:
   - pip freeze
-#script:
+script:
 #  - pytest
-#  - python setup.py test
+  - python setup.py test
