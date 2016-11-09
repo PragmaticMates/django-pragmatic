@@ -1,4 +1,4 @@
-sudo: required
+sudo: false
 language: python
 python:
   - "2.6"
@@ -7,20 +7,15 @@ python:
   - "3.3"
   - "3.4"
   - "3.5"
-#services:
-#  - redis
 env:
   - DJANGO=1.7.8
   - DJANGO=1.8.6
   - DJANGO=1.9.10
   - DJANGO=1.10.2
-# command to install dependencies
 install:
   - pip install .
   - pip install -q Django==$DJANGO
-# command to run tests
 before_script:
   - pip freeze
 script:
-#  - pytest
   - python setup.py test
