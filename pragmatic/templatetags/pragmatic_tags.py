@@ -1,11 +1,12 @@
 import os
 import urllib
 
+from barcode.errors import IllegalCharacterError
 from django import template
 from django.template.defaultfilters import stringfilter
 from django.utils.html import conditional_escape
 from django.utils.safestring import mark_safe
-from django.utils.translation import ugettext
+from django.utils.translation import ugettext, ugettext_lazy as _
 
 register = template.Library()
 
@@ -62,9 +63,14 @@ def qrcode(value, alt=None):
 @register.filter
 @stringfilter
 def barcode(code, args=None):
-    barcode = pragmatic_barcode(code, args)
-    # return as HTML element
-    return mark_safe('<img src="data:image/png;base64,' + barcode + '" />')
+    try:
+        barcode = pragmatic_barcode(code, args)
+        # return as HTML element
+        return mark_safe('<img src="data:image/png;base64,' + barcode + '" />')
+    except IllegalCharacterError as e:
+        message = unicode(e)
+        character = message.split(':', 1)[1]
+        return '{}: {}'.format(_('Invalid characters'), character)
 
 
 @register.inclusion_tag('helpers/pagination.html', takes_context=True)
