@@ -70,7 +70,7 @@ def barcode(code, args=None):
     except IllegalCharacterError as e:
         message = unicode(e)
         character = message.split(':', 1)[1]
-        return '{}: {}'.format(_('Invalid characters'), character)
+        return u'{}: {}'.format(_('Invalid characters'), character)
 
 
 @register.inclusion_tag('helpers/pagination.html', takes_context=True)
