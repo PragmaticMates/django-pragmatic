@@ -1,16 +1,15 @@
 import os
 import urllib
 
-from barcode.errors import IllegalCharacterError
 from django import template
 from django.template.defaultfilters import stringfilter
 from django.utils.html import conditional_escape
 from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext, ugettext_lazy as _
+from python_pragmatic.strings import barcode as pragmatic_barcode
 
 register = template.Library()
 
-from python_pragmatic.strings import barcode as pragmatic_barcode
 
 @register.filter('klass')
 def klass(ob):
@@ -63,6 +62,8 @@ def qrcode(value, alt=None):
 @register.filter
 @stringfilter
 def barcode(code, args=None):
+    from barcode.errors import IllegalCharacterError
+
     try:
         barcode = pragmatic_barcode(code, args)
         # return as HTML element
@@ -89,6 +90,8 @@ def paginator(context, objects, page_ident='page', anchor=None, adjacent=2):
     if number + adjacent + 1 == len(page_range):
         show_right_dots = False
 
+    page_obj = objects.paginator.page(objects.number)
+
     return {
         'anchor': anchor,
         'request': context.get('request', None),
@@ -97,6 +100,7 @@ def paginator(context, objects, page_ident='page', anchor=None, adjacent=2):
         'page': objects.number,
         'pages': page_range,
         'count': len(page_range),
+        'total_count': objects.paginator.count,
         'page_numbers': page_numbers,
         'next': objects.next_page_number,
         'previous': objects.previous_page_number,
@@ -106,6 +110,8 @@ def paginator(context, objects, page_ident='page', anchor=None, adjacent=2):
         'show_last': False if len(page_range) - number <= adjacent else True,
         'show_left_dots': show_left_dots,
         'show_right_dots': show_right_dots,
+        'start': page_obj.start_index(),
+        'end': page_obj.end_index()
     }
 
 

@@ -3,10 +3,14 @@ import datetime
 from django import forms
 from django.conf import settings
 from django.contrib import messages
+from django.contrib.auth.mixins import PermissionRequiredMixin as DjangoPermissionRequiredMixin, AccessMixin
+from django.core.exceptions import PermissionDenied
 from django.db.models.deletion import ProtectedError
 from django.http.response import HttpResponseRedirect, HttpResponse
+from django.shortcuts import redirect
+from django.urls import reverse
 from django.utils import timezone, six
-from django.utils.translation import ugettext_lazy as _
+from django.utils.translation import ugettext_lazy as _, ugettext
 
 
 class ReadOnlyFormMixin(forms.BaseForm):
@@ -27,17 +31,66 @@ class ReadOnlyFormMixin(forms.BaseForm):
                     setattr(self, "clean_" + field, self._get_cleaner(field))
 
 
+class LoginPermissionRequiredMixin(DjangoPermissionRequiredMixin):
+    raise_exception = True
+
+    def get_permission_denied_message(self):
+        """
+        Override this method to override the permission_denied_message attribute.
+        """
+        if self.permission_denied_message:
+            return self.permission_denied_message
+
+        return self.permission_required
+
+    def handle_no_permission(self):
+        self.request.user.permission_error = self.get_permission_denied_message()
+
+        if not self.request.user.is_authenticated:
+            self.raise_exception = False
+
+        return super().handle_no_permission()
+
+
+class StaffRequiredMixin(AccessMixin):
+    """
+    CBV mixin which verifies that the current user is staff
+    """
+    raise_exception = False
+    permission_denied_message = ugettext('You are not authorized for this operation')
+
+    def dispatch(self, request, *args, **kwargs):
+        if not request.user.is_staff and not request.user.is_superuser:
+            return self.handle_no_permission()
+        return super(StaffRequiredMixin, self).dispatch(request, *args, **kwargs)
+
+    def handle_no_permission(self):
+        if self.raise_exception:
+            raise PermissionDenied(self.get_permission_denied_message())
+
+        messages.error(self.request, self.get_permission_denied_message())
+        return redirect(reverse('dashboard'))
+
+
 class DeleteObjectMixin(object):
-    template_name = 'pragmatic/confirm_delete.html'
+    template_name = 'confirm_delete.html'
     title = _(u'Delete object')
     message_success = _(u'Object successfully deleted.')
     message_error = _(u'Object could not be deleted, check if some objects are not associated with it.')
-
-    def get_success_url(self):
-        return self.get_parent().get_absolute_url()
+    back_url = None
+    failure_url = None
 
     def get_back_url(self):
-        return self.get_parent().get_absolute_url()
+        try:
+            return self.back_url if self.back_url else self.object.get_absolute_url()
+        except:
+            return self.success_url
+
+    def get_failure_url(self):
+        return self.failure_url if self.failure_url else self.get_back_url()
+
+    def get_success_url(self):
+        return self.success_url
 
     def delete(self, request, *args, **kwargs):
         self.object = self.get_object()
@@ -45,10 +98,11 @@ class DeleteObjectMixin(object):
             self.object.delete()
             if self.message_success:
                 messages.success(request, self.message_success)
+            return HttpResponseRedirect(self.get_success_url())
         except ProtectedError:
             if self.message_error:
                 messages.error(request, self.message_error)
-        return HttpResponseRedirect(self.get_success_url())
+        return HttpResponseRedirect(self.get_failure_url())
 
     def get_context_data(self, **kwargs):
         context_data = super(DeleteObjectMixin, self).get_context_data(**kwargs)
