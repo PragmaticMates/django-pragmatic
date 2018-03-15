@@ -7,7 +7,7 @@
         </span>
     {% endif %}
 
-    {% if is_paginated %}
+    {% if page_numbers|length > 1 %}
         <ul class="pagination">
             {% if has_previous %}
                 <li class="button left"><a href="?{{ page_ident }}={{ previous }}{% for key,value in request.GET.items %}{% ifnotequal key 'page' %}&amp;{{ key }}={{ value }}{% endifnotequal %}{% endfor %}"><i class="fa fa-arrow-left"></i></a></li>
@@ -34,7 +34,6 @@
                     <li><a href="?{{ page_ident }}={{ linkpage }}{% for key,value in request.GET.items %}{% ifnotequal key 'page' %}&amp;{{ key }}={{ value }}{% endifnotequal %}{% endfor %}">{{ linkpage }}<span></span></a></li>
                 {% endifequal %}
             {% endfor %}
-
 
             {% if show_last %}
                 {% if show_right_dots %}
