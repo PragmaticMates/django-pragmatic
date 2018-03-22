@@ -136,7 +136,7 @@ def multiply(value, arg):
 
 
 @register.filter(is_safe=False)
-def add(value, arg):
+def addition(value, arg):
     """Adds the arg to the value."""
     try:
         return float(value) + float(arg)
@@ -193,3 +193,64 @@ class CaptureNode(template.Node):
     def render(self, context):
         context[self.varname] = self.nodelist.render(context)
         return ''
+
+
+@register.filter()
+def add_query_param(url, param):
+    from urllib import parse
+    from django.http import QueryDict
+
+    # parse URL
+    parsed_url = parse.urlparse(url)
+
+    # path
+    path = parsed_url.path
+
+    # params as string
+    params = parsed_url.query
+
+    # convert params string to querydict
+    querydict = QueryDict(params, mutable=True)
+
+    # add (replace) param to querydict
+    for key, value in QueryDict(param).items():
+        querydict[key] = value
+
+    # encode params to string
+    encoded_params = querydict.urlencode()
+
+    # construct new path
+    new_url = '{}?{}'.format(path, encoded_params)
+
+    return new_url.strip('?')
+
+
+@register.filter()
+def remove_query_param(url, param):
+    from urllib import parse
+    from django.http import QueryDict
+
+    # parse URL
+    parsed_url = parse.urlparse(url)
+
+    # path
+    path = parsed_url.path
+
+    # params as string
+    params = parsed_url.query
+
+    # convert params string to querydict
+    querydict = QueryDict(params, mutable=True)
+
+    # remove param from querydict (if exists)
+    for key, value in QueryDict(param).items():
+        if key in querydict:
+            querydict.pop(key)
+
+    # encode params to string
+    encoded_params = querydict.urlencode()
+
+    # construct new path
+    new_url = '{}?{}'.format(path, encoded_params)
+
+    return new_url.strip('?')

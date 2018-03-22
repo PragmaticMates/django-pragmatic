@@ -4,7 +4,7 @@ from setuptools import setup
 
 setup(
     name='django-pragmatic',
-    version='1.8.1',
+    version='1.9.0',
     description='Pragmatic tools and utilities for Django projects',
     long_description=open('README.rst').read(),
     author='Pragmatic Mates',
