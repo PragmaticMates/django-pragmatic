@@ -8,6 +8,11 @@ from django.utils.encoding import smart_text
 from django.utils.translation import ugettext_lazy as _
 
 
+class AlwaysValidChoiceField(forms.ChoiceField):
+    def valid_value(self, value):
+        return True
+
+
 class TruncatedModelChoiceField(forms.ModelChoiceField):
     def __init__(self, queryset, empty_label="---------",
                  truncate_suffix='...', truncate_chars=None,
