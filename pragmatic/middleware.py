@@ -18,14 +18,11 @@ class MaintenanceModeMiddleware(MiddlewareMixin):
         if not getattr(settings, 'MAINTENANCE_MODE', False):
             return response
 
-        # Check if logged in user is staff
-        try:
-            is_staff = request.user.is_authenticated and request.user.is_staff
-        except AttributeError:
-            is_staff = False
+        # Check if we can bypass maintenance for current user
+        bypass = request.user.is_authenticated and request.user.pk in getattr(settings, 'MAINTENANCE_MODE_BYPASS_USERS', [])
 
         # bypass maintenance mode if staff user is logged in
-        if is_staff:
+        if bypass:
             return response
 
         # render maintenance mode screen template
