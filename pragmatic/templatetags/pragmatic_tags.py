@@ -26,6 +26,56 @@ def bootstrap3_field(obj):
     return obj
 
 
+@register.inclusion_tag('helpers/filter_values.html', takes_context=True)
+def filter_values(context, filter):
+    request = context.get('request', None)
+
+    if not request:
+        return {}
+
+    values = {}
+
+    form = filter.form
+    cleaned_data = form.cleaned_data
+
+    for param in request.GET:
+        filter_name = param
+        label_suffix = ''
+
+        for ending in ['_before', '_after']:
+            if param.endswith(ending):
+                filter_name = param[:-len(ending)]
+                slice_value_name = 'start' if ending == '_after' else 'stop'
+                label_suffix = ugettext('after') if ending == '_after' else ugettext('before')
+
+        filter_field = filter.filters.get(filter_name, None)
+
+        if filter_field:
+            value = cleaned_data.get(filter_name, None)
+
+            if value:
+                try:
+                    value = dict(form.fields[filter_name].choices)[value]
+                except (KeyError, AttributeError):
+                    pass
+
+                if isinstance(value, slice):
+                    if slice_value_name:
+                        value = getattr(value, slice_value_name)
+                    else:
+                        value = ' - '.join([str(value.start), str(value.stop)])
+
+                values[param] = {
+                    'label': (filter_field.label + ' ' + label_suffix).strip(),
+                    'value': value
+                }
+
+    return {
+        'request': request,
+        'filter_values': values
+    }
+
+
 @register.filter('filtered_objects_counts')
 def filtered_objects_counts(filtered, all):
     try:

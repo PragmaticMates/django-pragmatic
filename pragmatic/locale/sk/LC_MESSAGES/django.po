@@ -1,0 +1,111 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2018-03-30 12:13+0200\n"
+"PO-Revision-Date: 2018-03-30 12:18+0058\n"
+"Last-Translator: b'Erik Telepovsky <erik@pragmaticmates.com>'\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=3; plural=(n==1) ? 0 : (n>=2 && n<=4) ? 1 : 2;\n"
+"X-Translated-Using: django-rosetta 0.8.1\n"
+
+#: fields.py:39
+msgid "Enter a number or range of numbers with '-' separator."
+msgstr "Zadajte číslo alebo rozsah čísel oddelených '-'."
+
+#: mixins.py:60
+msgid "You are not authorized for this operation"
+msgstr "Na túto operáciu nemáte dostatok oprávnení"
+
+#: mixins.py:77
+msgid "Delete object"
+msgstr "Zmazať objekt"
+
+#: mixins.py:78
+msgid "Object successfully deleted."
+msgstr "Objekt úspešne zmazaný."
+
+#: mixins.py:79
+msgid ""
+"Object could not be deleted, check if some objects are not associated with "
+"it."
+msgstr ""
+"Objekt nemohol byť zmazaný. Skontrolujte či s ním nie sú asociované nejaké "
+"objekty."
+
+#: mixins.py:165
+msgid "Portrait"
+msgstr "Na výšku"
+
+#: mixins.py:166
+msgid "Landscape"
+msgstr "Na šírku"
+
+#: templates/helpers/confirm_delete.html:4
+#, python-format
+msgid "Are you sure you want to delete <strong>%(object)s</strong>?"
+msgstr "Ste si istý zmazaním <strong>%(object)s</strong>?"
+
+#: templates/helpers/confirm_delete.html:8
+msgid "Yes"
+msgstr "Áno"
+
+#: templates/helpers/confirm_delete.html:9
+msgid "No"
+msgstr "Nie"
+
+#: templates/helpers/filter_values.html:4
+msgid "Filter values"
+msgstr "Hodnoty filtra"
+
+#: templates/helpers/filter_values.html:10
+msgid "Unset"
+msgstr "Odnastaviť"
+
+#: templates/helpers/pagination.html:6
+#, python-format
+msgid ""
+"Showing <span class=\"start-end\">%(start)s-%(end)s</span> of <span "
+"class=\"total\">%(total_count)s</span>"
+msgstr ""
+"Zobrazených <span class=\"start-end\">%(start)s-%(end)s</span> z <span "
+"class=\"total\">%(total_count)s</span>"
+
+#: templates/maintenance_mode.html:4
+msgid "Maintenance mode"
+msgstr "Mód údržby"
+
+#: templates/maintenance_mode.html:7
+msgid "System is in the maintenance mode right now. Please, come back later."
+msgstr ""
+"Na webstránke momentálne prebieha plánovaná údržba. Skúste opäť neskôr."
+
+#: templatetags/pragmatic_tags.py:50
+msgid "after"
+msgstr "po"
+
+#: templatetags/pragmatic_tags.py:50
+msgid "before"
+msgstr "pred"
+
+#: templatetags/pragmatic_tags.py:84
+msgid "total"
+msgstr "celkom"
+
+#: templatetags/pragmatic_tags.py:87
+msgid "filtered, from a total of"
+msgstr "filtrovaných, z celkového počtu"
+
+#: templatetags/pragmatic_tags.py:125
+msgid "Invalid characters"
+msgstr "Neplatné znaky"
