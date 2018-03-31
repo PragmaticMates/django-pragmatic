@@ -1,6 +1,16 @@
 import django_filters
+from django.core.validators import EMPTY_VALUES
+from pragmatic.fields import TruncatedModelChoiceField, RangeField
 
-from fields import TruncatedModelChoiceField, RangeField
+
+class ArrayFilter(django_filters.CharFilter):
+    lookup = 'contains'
+
+    def filter(self, qs, value):
+        if value not in EMPTY_VALUES:
+            value = [value]
+            return qs.filter(**{'%s__%s' % (self.field_name, self.lookup): value})
+        return qs
 
 
 class TruncatedModelChoiceFilter(django_filters.Filter):

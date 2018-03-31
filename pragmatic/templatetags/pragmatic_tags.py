@@ -60,11 +60,11 @@ def filter_values(context, filter):
 
                     for v in value:
                         try:
-                            v = dict(form.fields[filter_name].choices)[v]
-                            v = ugettext(v)  # force ugettext (v can be instance of ugettext_lazy)
-                            value_values.append(v)
+                            v_display = dict(form.fields[filter_name].choices)[v]
+                            v_display = str(v_display)
+                            value_values.append(v_display)
                         except (KeyError, AttributeError):
-                            pass
+                            value_values.append(str(v))
 
                     value = ', '.join(value_values)
                 else:
