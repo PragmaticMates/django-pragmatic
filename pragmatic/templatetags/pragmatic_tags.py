@@ -54,12 +54,28 @@ def filter_values(context, filter):
             value = cleaned_data.get(filter_name, None)
 
             if value:
-                try:
-                    value = dict(form.fields[filter_name].choices)[value]
-                except (KeyError, AttributeError):
-                    pass
+                if isinstance(value, list):
+                    # multiple choice field
+                    value_values = []
+
+                    for v in value:
+                        try:
+                            v = dict(form.fields[filter_name].choices)[v]
+                            v = ugettext(v)  # force ugettext (v can be instance of ugettext_lazy)
+                            value_values.append(v)
+                        except (KeyError, AttributeError):
+                            pass
+
+                    value = ', '.join(value_values)
+                else:
+                    # choice field
+                    try:
+                        value = dict(form.fields[filter_name].choices)[value]
+                    except (KeyError, AttributeError):
+                        pass
 
                 if isinstance(value, slice):
+                    # range field
                     if slice_value_name:
                         value = getattr(value, slice_value_name)
                     else:
