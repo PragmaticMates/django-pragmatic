@@ -8,8 +8,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2018-03-30 12:13+0200\n"
-"PO-Revision-Date: 2018-03-30 12:18+0058\n"
+"POT-Creation-Date: 2018-04-17 12:01+0200\n"
+"PO-Revision-Date: 2018-04-17 12:01+0058\n"
 "Last-Translator: b'Erik Telepovsky <erik@pragmaticmates.com>'\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "Language: \n"
@@ -64,11 +64,11 @@ msgstr "Áno"
 msgid "No"
 msgstr "Nie"
 
-#: templates/helpers/filter_values.html:4
+#: templates/helpers/filter_values.html:5
 msgid "Filter values"
 msgstr "Hodnoty filtra"
 
-#: templates/helpers/filter_values.html:10
+#: templates/helpers/filter_values.html:12
 msgid "Unset"
 msgstr "Odnastaviť"
 
@@ -90,22 +90,30 @@ msgid "System is in the maintenance mode right now. Please, come back later."
 msgstr ""
 "Na webstránke momentálne prebieha plánovaná údržba. Skúste opäť neskôr."
 
-#: templatetags/pragmatic_tags.py:50
+#: templatetags/pragmatic_tags.py:51
 msgid "after"
 msgstr "po"
 
-#: templatetags/pragmatic_tags.py:50
+#: templatetags/pragmatic_tags.py:51
+msgid "from"
+msgstr "od"
+
+#: templatetags/pragmatic_tags.py:54
 msgid "before"
 msgstr "pred"
 
-#: templatetags/pragmatic_tags.py:84
+#: templatetags/pragmatic_tags.py:54
+msgid "to"
+msgstr "do"
+
+#: templatetags/pragmatic_tags.py:104
 msgid "total"
 msgstr "celkom"
 
-#: templatetags/pragmatic_tags.py:87
+#: templatetags/pragmatic_tags.py:107
 msgid "filtered, from a total of"
 msgstr "filtrovaných, z celkového počtu"
 
-#: templatetags/pragmatic_tags.py:125
+#: templatetags/pragmatic_tags.py:145
 msgid "Invalid characters"
 msgstr "Neplatné znaky"

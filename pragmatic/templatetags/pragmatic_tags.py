@@ -42,11 +42,16 @@ def filter_values(context, filter):
         filter_name = param
         label_suffix = ''
 
-        for ending in ['_before', '_after']:
+        for ending in ['_before', '_after', '_min', '_max']:
             if param.endswith(ending):
                 filter_name = param[:-len(ending)]
-                slice_value_name = 'start' if ending == '_after' else 'stop'
-                label_suffix = ugettext('after') if ending == '_after' else ugettext('before')
+
+                if ending in ['_after', '_min']:
+                    slice_value_name = 'start'
+                    label_suffix = ugettext('after') if ending == '_after' else ugettext('from')
+                else:
+                    slice_value_name = 'stop'
+                    label_suffix = ugettext('before') if ending == '_before' else ugettext('to')
 
         filter_field = filter.filters.get(filter_name, None)
 
