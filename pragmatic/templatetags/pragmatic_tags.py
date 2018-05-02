@@ -11,6 +11,16 @@ from python_pragmatic.strings import barcode as pragmatic_barcode
 register = template.Library()
 
 
+@register.filter
+@stringfilter
+def split(string, sep):
+    """Return the string split by sep.
+
+    Example usage: {{ value|split:"/" }}
+    """
+    return string.split(sep)
+
+
 @register.filter('klass')
 def klass(ob):
     return ob.__class__.__name__
