@@ -38,8 +38,6 @@ def url_identifier(request):
 
 
 def settings(request):
-    import django
-
     return {
         'settings': django_settings
     }
