@@ -12,6 +12,13 @@ register = template.Library()
 
 
 @register.filter
+def get_item(dictionary, key):
+    if isinstance(dictionary, list):
+        dictionary = dict(dictionary)
+
+    return dictionary.get(key, key)
+
+@register.filter
 @stringfilter
 def split(string, sep):
     """Return the string split by sep.
