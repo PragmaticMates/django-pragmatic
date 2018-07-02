@@ -50,12 +50,21 @@ def filter_values(context, filter):
     if not request:
         return {}
 
+    values = filtered_values(filter, request.GET)
+
+    return {
+        'full_path': request.get_full_path(),
+        'filter_values': values
+    }
+
+
+def filtered_values(filter, request_data):
     values = {}
 
     form = filter.form
     cleaned_data = form.cleaned_data
 
-    for param in request.GET:
+    for param in request_data:
         filter_name = param
         label_suffix = ''
 
@@ -108,10 +117,7 @@ def filter_values(context, filter):
                     'value': value
                 }
 
-    return {
-        'request': request,
-        'filter_values': values
-    }
+    return values
 
 
 @register.filter('filtered_objects_counts')

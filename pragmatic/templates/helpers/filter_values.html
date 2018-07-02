@@ -9,7 +9,7 @@
                 <label>{{ field.label }}:</label>
                 <span>
                     {{ field.value }}
-                    <a href="{{ request.get_full_path|remove_query_param:param }}">{% trans 'Unset' %}</a>
+                    <a href="{{ full_path|remove_query_param:param }}">{% trans 'Unset' %}</a>
                 </span>
             </div>
         {% endfor %}
