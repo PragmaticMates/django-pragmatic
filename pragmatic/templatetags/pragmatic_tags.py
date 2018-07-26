@@ -68,6 +68,8 @@ def filtered_values(filter, request_data):
         filter_name = param
         label_suffix = ''
 
+        slice_value_name = None
+
         for ending in ['_before', '_after', '_min', '_max']:
             if param.endswith(ending):
                 filter_name = param[:-len(ending)]
@@ -110,7 +112,13 @@ def filtered_values(filter, request_data):
                     if slice_value_name:
                         value = getattr(value, slice_value_name)
                     else:
-                        value = ' - '.join([str(value.start), str(value.stop)])
+                        if value.start and value.stop:
+                            value = ' - '.join([str(value.start), str(value.stop)])
+                        else:
+                            if value.start:
+                                value = ugettext('at least') + ' ' + str(value.start)
+                            elif value.stop:
+                                value = ugettext('up to') + ' ' + str(value.stop)
 
                 values[param] = {
                     'label': (filter_field.label + ' ' + label_suffix).strip(),
@@ -173,8 +181,7 @@ def paginator(context, objects, page_ident='page', anchor=None, adjacent=2):
     page_range = objects.paginator.page_range
     number = objects.number
 
-    page_numbers = [n for n in range(number - adjacent, number + adjacent + 1)
-                    if n > 0 and n <= len(page_range)]
+    page_numbers = [n for n in range(number - adjacent, number + adjacent + 1) if n > 0 and n <= len(page_range)]
 
     show_left_dots = True
     if number - adjacent - 1 == 1:
