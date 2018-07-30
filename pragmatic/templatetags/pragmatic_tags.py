@@ -58,6 +58,7 @@ def filter_values(context, filter):
     }
 
 
+@register.simple_tag()
 def filtered_values(filter, request_data):
     values = {}
 

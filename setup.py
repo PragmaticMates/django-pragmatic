@@ -4,7 +4,7 @@ from setuptools import setup
 
 setup(
     name='django-pragmatic',
-    version='2.7.1',
+    version='2.7.2',
     description='Pragmatic tools and utilities for Django projects',
     long_description=open('README.rst').read(),
     author='Pragmatic Mates',
@@ -30,5 +30,5 @@ setup(
         'Development Status :: 3 - Alpha'
     ],
     license='BSD License',
-    keywords = "django pragmatic tools utils",
+    keywords="django pragmatic tools utils",
 )
