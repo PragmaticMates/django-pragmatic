@@ -18,6 +18,7 @@ def get_item(dictionary, key):
 
     return dictionary.get(key, key)
 
+
 @register.filter
 @stringfilter
 def split(string, sep):
