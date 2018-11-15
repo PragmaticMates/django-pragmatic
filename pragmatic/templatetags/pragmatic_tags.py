@@ -16,7 +16,10 @@ def get_item(dictionary, key):
     if isinstance(dictionary, list):
         dictionary = dict(dictionary)
 
-    return dictionary.get(key, key)
+    try:
+        return dictionary.get(key)
+    except AttributeError:
+        return None
 
 
 @register.filter
@@ -27,6 +30,11 @@ def split(string, sep):
     Example usage: {{ value|split:"/" }}
     """
     return string.split(sep)
+
+
+@register.filter
+def attribute(value, attr):
+    return getattr(value, attr)
 
 
 @register.filter('klass')
