@@ -6,6 +6,7 @@ from django.template.defaultfilters import stringfilter
 from django.utils.html import conditional_escape
 from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext, ugettext_lazy as _
+from django_filters.fields import DateRangeField, DateTimeRangeField
 from python_pragmatic.strings import barcode as pragmatic_barcode
 
 register = template.Library()
@@ -120,7 +121,16 @@ def filtered_values(filter, request_data):
                 if isinstance(value, slice):
                     # range field
                     if slice_value_name:
-                        value = getattr(value, slice_value_name)
+                        slice_value = getattr(value, slice_value_name)
+
+                        if slice_value_name in ['start', 'stop']:
+                            first_value = form.fields[filter_name].fields[0].to_python(getattr(value, 'start'))
+                            last_value = form.fields[filter_name].fields[1].to_python(getattr(value, 'stop'))
+
+                            if first_value != last_value:
+                                slice_value = first_value if slice_value_name == 'start' else last_value
+
+                        value = slice_value
                     else:
                         if value.start and value.stop:
                             value = ' - '.join([str(value.start), str(value.stop)])
