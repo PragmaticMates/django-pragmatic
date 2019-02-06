@@ -5,7 +5,7 @@
         <strong>{% trans 'Filter values' %}:</strong>
 
         {% for param, field in filter_values.items %}
-            <div class="filter-value">
+            <div class="filter-value" data-param="{{ param }}">
                 <label>{{ field.label }}:</label>
                 <span>
                     {{ field.value }}
