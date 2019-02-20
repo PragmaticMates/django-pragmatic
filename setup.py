@@ -14,7 +14,7 @@ setup(
     url='https://github.com/PragmaticMates/django-pragmatic',
     packages=[
         'pragmatic',
-        'pragmatic.migrations'
+        'pragmatic.migrations',
         'pragmatic.templatetags'
     ],
     include_package_data=True,
