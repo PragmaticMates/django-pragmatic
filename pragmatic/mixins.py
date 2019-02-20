@@ -4,6 +4,7 @@ from django import forms
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.mixins import PermissionRequiredMixin as DjangoPermissionRequiredMixin, AccessMixin
+from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import PermissionDenied
 from django.db.models.deletion import ProtectedError
 from django.http.response import HttpResponseRedirect, HttpResponse
@@ -11,6 +12,8 @@ from django.shortcuts import redirect
 from django.urls import reverse
 from django.utils import timezone, six
 from django.utils.translation import ugettext_lazy as _, ugettext
+
+from pragmatic.models import DeletedObject
 
 
 class ReadOnlyFormMixin(forms.BaseForm):
@@ -94,10 +97,32 @@ class DeleteObjectMixin(object):
 
     def delete(self, request, *args, **kwargs):
         self.object = self.get_object()
+        track_deleted_objects = getattr(settings, 'PRAGMATIC_TRACK_DELETED_OBJECTS', False)
+
         try:
+            if track_deleted_objects:
+                # prepare tracking data
+                content_type = ContentType.objects.get_for_model(self.object, for_concrete_model=False)
+                object_id = self.object.id
+                object_str = str(self.object)
+                user = self.request.user
+
+            # delete object
             self.object.delete()
+
+            # show success message if available
             if self.message_success:
                 messages.success(request, self.message_success)
+
+            if track_deleted_objects:
+                # track deleted object
+                DeletedObject.objects.create(
+                    content_type=content_type,
+                    object_id=object_id,
+                    object_str=object_str,
+                    user=user if user.is_authenticated else None
+                )
+
             return HttpResponseRedirect(self.get_success_url())
         except ProtectedError:
             if self.message_error:
