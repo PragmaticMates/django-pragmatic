@@ -7,7 +7,7 @@ from django.utils.translation import ugettext_lazy as _
 
 class DeletedObject(models.Model):
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
-    object_id = models.PositiveIntegerField()
+    object_id = models.PositiveIntegerField(_('object ID'))
     object_str = models.CharField(_('object representation'), max_length=200)
     user = models.ForeignKey(get_user_model(), on_delete=models.SET_NULL,
         blank=True, null=True, default=None)

@@ -8,9 +8,9 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2018-04-17 12:01+0200\n"
-"PO-Revision-Date: 2018-04-17 12:01+0058\n"
-"Last-Translator: b'Erik Telepovsky <erik@pragmaticmates.com>'\n"
+"POT-Creation-Date: 2019-02-26 10:57+0100\n"
+"PO-Revision-Date: 2019-02-26 10:58+0058\n"
+"Last-Translator: b'Name 1 <erik@pragmaticmates.com>'\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "Language: \n"
 "MIME-Version: 1.0\n"
@@ -23,19 +23,19 @@ msgstr ""
 msgid "Enter a number or range of numbers with '-' separator."
 msgstr "Zadajte číslo alebo rozsah čísel oddelených '-'."
 
-#: mixins.py:60
+#: mixins.py:63
 msgid "You are not authorized for this operation"
 msgstr "Na túto operáciu nemáte dostatok oprávnení"
 
-#: mixins.py:77
+#: mixins.py:80
 msgid "Delete object"
 msgstr "Zmazať objekt"
 
-#: mixins.py:78
+#: mixins.py:81
 msgid "Object successfully deleted."
 msgstr "Objekt úspešne zmazaný."
 
-#: mixins.py:79
+#: mixins.py:82
 msgid ""
 "Object could not be deleted, check if some objects are not associated with "
 "it."
@@ -43,13 +43,35 @@ msgstr ""
 "Objekt nemohol byť zmazaný. Skontrolujte či s ním nie sú asociované nejaké "
 "objekty."
 
-#: mixins.py:165
+#: mixins.py:190
 msgid "Portrait"
 msgstr "Na výšku"
 
-#: mixins.py:166
+#: mixins.py:191
 msgid "Landscape"
 msgstr "Na šírku"
+
+#: models.py:10
+msgid "object ID"
+msgstr "ID objektu"
+
+#: models.py:11
+msgid "object representation"
+msgstr "reprezentácia objektu"
+
+#: models.py:14
+msgid "datetime"
+msgstr "dátum a čas"
+
+#: models.py:17
+#| msgid "Delete object"
+msgid "deleted object"
+msgstr "zmazaný objekt"
+
+#: models.py:18
+#| msgid "Delete object"
+msgid "deleted objects"
+msgstr "zmazané objekty"
 
 #: templates/helpers/confirm_delete.html:4
 #, python-format
@@ -90,30 +112,38 @@ msgid "System is in the maintenance mode right now. Please, come back later."
 msgstr ""
 "Na webstránke momentálne prebieha plánovaná údržba. Skúste opäť neskôr."
 
-#: templatetags/pragmatic_tags.py:51
+#: templatetags/pragmatic_tags.py:90
 msgid "after"
 msgstr "po"
 
-#: templatetags/pragmatic_tags.py:51
+#: templatetags/pragmatic_tags.py:90
 msgid "from"
 msgstr "od"
 
-#: templatetags/pragmatic_tags.py:54
+#: templatetags/pragmatic_tags.py:93
 msgid "before"
 msgstr "pred"
 
-#: templatetags/pragmatic_tags.py:54
+#: templatetags/pragmatic_tags.py:93
 msgid "to"
 msgstr "do"
 
-#: templatetags/pragmatic_tags.py:104
+#: templatetags/pragmatic_tags.py:139
+msgid "at least"
+msgstr "aspoň"
+
+#: templatetags/pragmatic_tags.py:141
+msgid "up to"
+msgstr "nanajvýš"
+
+#: templatetags/pragmatic_tags.py:155
 msgid "total"
 msgstr "celkom"
 
-#: templatetags/pragmatic_tags.py:107
+#: templatetags/pragmatic_tags.py:158
 msgid "filtered, from a total of"
 msgstr "filtrovaných, z celkového počtu"
 
-#: templatetags/pragmatic_tags.py:145
+#: templatetags/pragmatic_tags.py:196
 msgid "Invalid characters"
 msgstr "Neplatné znaky"
