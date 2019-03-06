@@ -1,4 +1,5 @@
 import os
+import re
 import urllib
 
 from django import template
@@ -368,3 +369,9 @@ def replace_query_param(url, param):
 def remove_query_param(url, param):
     return modify_query_param(url, param, action='remove')
 
+
+@register.filter
+def url_anchor(html):
+    pat = re.compile(r'(https?:\/\/(?:www\.|(?!www))[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|www\.[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|https?:\/\/(?:www\.|(?!www))[a-zA-Z0-9]\.[^\s]{2,}|www\.[a-zA-Z0-9]\.[^\s]{2,})')
+    sub = re.sub(pat, lambda x: '<a href="' + x.group(1) + '">' + x.group(1) + '</a>', html)
+    return mark_safe(sub)
