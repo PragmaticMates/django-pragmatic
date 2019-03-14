@@ -39,9 +39,19 @@ def attribute(value, attr):
     return getattr(value, attr)
 
 
-@register.filter('klass')
+@register.filter
 def klass(ob):
     return ob.__class__.__name__
+
+
+@register.filter
+def class_name(ob):
+    return ob.__class__.__name__
+
+
+@register.filter
+def class_module(ob):
+    return ob.__class__.__module__
 
 
 @register.filter(name='bootstrap3_field')
