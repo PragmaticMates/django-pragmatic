@@ -111,21 +111,25 @@ def filtered_values(filter, request_data):
             if value:
                 if isinstance(value, list):
                     # multiple choice field
-                    value_values = []
+                    if hasattr(filter_field, 'queryset'):
+                        value = ', '.join([str(v) for v in value])
+                    else:
+                        value_values = []
 
-                    for v in value:
-                        try:
-                            v_display = dict(form.fields[filter_name].choices)[v]
-                            v_display = str(v_display)
-                            value_values.append(v_display)
-                        except (KeyError, AttributeError):
-                            value_values.append(str(v))
+                        for v in value:
+                            try:
+                                v_display = dict(form.fields[filter_name].choices)[v]
+                                v_display = str(v_display)
+                                value_values.append(v_display)
+                            except (KeyError, AttributeError):
+                                value_values.append(str(v))
 
-                    value = ', '.join(value_values)
+                        value = ', '.join(value_values)
                 else:
                     # choice field
                     try:
-                        value = dict(form.fields[filter_name].choices)[value]
+                        if not hasattr(filter_field, 'queryset'):
+                            value = dict(form.fields[filter_name].choices)[value]
                     except (KeyError, AttributeError):
                         pass
 
@@ -157,6 +161,31 @@ def filtered_values(filter, request_data):
                 }
 
     return values
+
+
+@register.simple_tag()
+def num_applied_filters(filter, request_data):
+    form = filter.form
+    cleaned_data = form.cleaned_data
+
+    num_applied_filters = 0
+
+    for param in request_data:
+        filter_name = param
+
+        for ending in ['_before', '_after', '_min', '_max']:
+            if param.endswith(ending):
+                filter_name = param[:-len(ending)]
+
+        filter_field = filter.filters.get(filter_name, None)
+
+        if filter_field:
+            value = cleaned_data.get(filter_name, None)
+
+            if value:
+                num_applied_filters += 1
+
+    return num_applied_filters
 
 
 @register.filter('filtered_objects_counts')
