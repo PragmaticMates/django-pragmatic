@@ -6,6 +6,7 @@ from django.contrib import messages
 from django.contrib.auth.mixins import PermissionRequiredMixin as DjangoPermissionRequiredMixin, AccessMixin
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import PermissionDenied
+from django.db.models import F
 from django.db.models.deletion import ProtectedError
 from django.http.response import HttpResponseRedirect, HttpResponse
 from django.shortcuts import redirect
@@ -250,3 +251,84 @@ class FPDFMixin(object):
 
     def write_pdf_content(self):
         pass
+
+
+class DisplayListViewMixin(object):
+    displays = []
+    paginate_by_display = {}
+
+    def dispatch(self, request, *args, **kwargs):
+        self.eval_get_paginate_by(request)
+        self.template_name_suffix = f'_{self.display}'
+        return super().dispatch(request, *args, **kwargs)
+
+    def eval_get_paginate_by(self, request):
+        paginate_values = self.paginate_by_display.get(self.display, None)
+        paginate_values = paginate_values if isinstance(paginate_values, list) else [paginate_values]
+        self.paginate_by = request.GET.get('paginate_by', next(iter(paginate_values)))
+        self.paginate_by = int(self.paginate_by) if self.paginate_by in map(str, paginate_values) else paginate_values[0]
+
+    @property
+    def display(self):
+        display = self.request.GET.get('display', self.displays[0])
+        display = display if display in self.displays else self.displays[0]
+        return display
+
+    def get_paginate_by(self, queryset):
+        """
+        Get the number of items to paginate by current display, or ``None`` for no pagination.
+        """
+        return self.paginate_by
+
+    def get_context_data(self, *args, **kwargs):
+        context_data = super().get_context_data(*args, **kwargs)
+        context_data['display_modes'] = self.displays
+        context_data['paginate_by_display'] = self.paginate_by_display
+        return context_data
+
+
+class PaginateListViewMixin(object):
+    def dispatch(self, request, *args, **kwargs):
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_paginate_by(self, queryset):
+        """
+        Get the number of items to paginate by current display, or ``None`` for no pagination.
+        """
+        return self.paginate_by
+
+    def get_context_data(self, *args, **kwargs):
+        context_data = super().get_context_data(*args, **kwargs)
+        return context_data
+
+
+class SortingListViewMixin(object):
+    sorting_options = {}
+
+    @property
+    def sorting(self):
+        first_sorting_option = next(iter(self.sorting_options.keys())) if len(self.sorting_options.keys()) > 0 else None
+        sorting = self.request.GET.get('sorting', first_sorting_option)
+        sorting = sorting if sorting in self.sorting_options else first_sorting_option
+        sorting_value = self.sorting_options.get(sorting)
+        sorting = sorting_value[1] if isinstance(sorting_value, tuple) else sorting
+        return sorting
+
+    def get_context_data(self, *args, **kwargs):
+        context_data = super().get_context_data(*args, **kwargs)
+        context_data['sorting_options'] = self.sorting_options
+        return context_data
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        return self.sort_queryset(queryset)
+
+    def sort_queryset(self, queryset):
+        if not self.sorting:
+            return queryset
+
+        if isinstance(self.sorting, list):
+            return queryset.order_by(*self.sorting)
+
+        sorting = F(self.sorting[1:]).desc(nulls_last=True) if self.sorting.startswith('-') else self.sorting
+        return queryset.order_by(sorting)
