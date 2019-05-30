@@ -467,7 +467,7 @@ def get_displays(current_mode, localized_modes, modes, request, url):
         params['display'] = mode
 
         is_active = current_mode == mode
-        full_url = f'{url}?{params.urlencode()}'
+        full_url = u'{}?{}'.format(url, params.urlencode())
 
         display.update({
             'mode': mode,
@@ -491,7 +491,7 @@ def get_paginate_by(available_paginate_values, request, url):
             params = request.GET.copy()
             params['paginate_by'] = available_paginate_by
 
-            full_url = f'{url}?{params.urlencode()}'
+            full_url = u'{}?{}'.format(url, params.urlencode())
 
             paginate_by.update({
                 'value': available_paginate_by,
@@ -507,14 +507,14 @@ def get_paginate_by(available_paginate_values, request, url):
 def sorting(context):
     sorting_list = []
     request = context['request']
+    default_sorting = context['default_sorting']
     sorting_options = context.get('sorting_options', {'-created': 'Recently created'})
     url = request.path
     current_sorting = None
 
     if len(sorting_options.keys()) > 0:
-        first_sorting_option = next(iter(sorting_options.keys()))
-        current_sorting = request.GET.get('sorting', first_sorting_option)
-        current_sorting = current_sorting if current_sorting in sorting_options else first_sorting_option
+        current_sorting = request.GET.get('sorting', default_sorting)
+        current_sorting = current_sorting if current_sorting in sorting_options else default_sorting
         current_sorting = sorting_options.get(current_sorting, current_sorting)
         current_sorting = str(current_sorting[0]) if isinstance(current_sorting, tuple) else current_sorting
 
@@ -523,7 +523,7 @@ def sorting(context):
 
             params = request.GET.copy()
             params['sorting'] = sorting_option
-            full_url = f'{url}?{params.urlencode()}'
+            full_url = u'{}?{}'.format(url, params.urlencode())
             mode = sorting_options.get(sorting_option)
 
             sorting.update({

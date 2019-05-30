@@ -259,8 +259,8 @@ class DisplayListViewMixin(object):
 
     def dispatch(self, request, *args, **kwargs):
         self.eval_get_paginate_by(request)
-        self.template_name_suffix = f'_{self.display}'
-        return super().dispatch(request, *args, **kwargs)
+        self.template_name_suffix = u'_{}'.format(self.display)
+        return super(DisplayListViewMixin, self).dispatch(request, *args, **kwargs)
 
     def eval_get_paginate_by(self, request):
         paginate_values = self.paginate_by_display.get(self.display, None)
@@ -281,7 +281,7 @@ class DisplayListViewMixin(object):
         return self.paginate_by
 
     def get_context_data(self, *args, **kwargs):
-        context_data = super().get_context_data(*args, **kwargs)
+        context_data = super(DisplayListViewMixin, self).get_context_data(*args, **kwargs)
         context_data['display_modes'] = self.displays
         context_data['paginate_by_display'] = self.paginate_by_display
         return context_data
@@ -289,7 +289,7 @@ class DisplayListViewMixin(object):
 
 class PaginateListViewMixin(object):
     def dispatch(self, request, *args, **kwargs):
-        return super().dispatch(request, *args, **kwargs)
+        return super(PaginateListViewMixin, self).dispatch(request, *args, **kwargs)
 
     def get_paginate_by(self, queryset):
         """
@@ -298,29 +298,33 @@ class PaginateListViewMixin(object):
         return self.paginate_by
 
     def get_context_data(self, *args, **kwargs):
-        context_data = super().get_context_data(*args, **kwargs)
+        context_data = super(PaginateListViewMixin, self).get_context_data(*args, **kwargs)
         return context_data
 
 
 class SortingListViewMixin(object):
     sorting_options = {}
 
+    def get_default_sorting(self):
+        return next(iter(self.sorting_options.keys())) if len(self.sorting_options.keys()) > 0 else None
+
     @property
     def sorting(self):
-        first_sorting_option = next(iter(self.sorting_options.keys())) if len(self.sorting_options.keys()) > 0 else None
-        sorting = self.request.GET.get('sorting', first_sorting_option)
-        sorting = sorting if sorting in self.sorting_options else first_sorting_option
+        default_sorting = self.get_default_sorting()
+        sorting = self.request.GET.get('sorting', default_sorting)
+        sorting = sorting if sorting in self.sorting_options else default_sorting
         sorting_value = self.sorting_options.get(sorting)
         sorting = sorting_value[1] if isinstance(sorting_value, tuple) else sorting
         return sorting
 
     def get_context_data(self, *args, **kwargs):
-        context_data = super().get_context_data(*args, **kwargs)
+        context_data = super(SortingListViewMixin, self).get_context_data(*args, **kwargs)
         context_data['sorting_options'] = self.sorting_options
+        context_data['default_sorting'] = self.get_default_sorting()
         return context_data
 
     def get_queryset(self):
-        queryset = super().get_queryset()
+        queryset = super(SortingListViewMixin, self).get_queryset()
         return self.sort_queryset(queryset)
 
     def sort_queryset(self, queryset):
