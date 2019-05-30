@@ -1,0 +1,32 @@
+{% load i18n pragmatic_tags %}
+
+{% if paginate_values %}
+<div class="col-sm-auto paginate-by py-1">
+    <div class="dropdown d-flex align-items-center">
+        <b class="text-light mr-1">{% trans 'Paginate by' %}:</b>
+        <button class="btn btn-dropdown dropdown-toggle" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+            {{ current_paginate_by }}
+        </button>
+        <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
+            {% for paginate_by in paginate_values %}
+                <a class="dropdown-item" href="{{ paginate_by.url }}">{{ paginate_by.value }}</a>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% if displays|length > 1 %}
+<div class="col-sm-auto display-as py-1">
+    <b class="text-light">{% trans 'Display as' %}:</b>
+    {% for display in displays %}
+        {% if display.active %}
+            <i class="fa fa-lg ml-2 text-primary" data-mode="{{ display.mode }}" data-toggle="tooltip" data-placement="top" title="{{ display.localized_mode }}"></i>
+        {% else %}
+            <a href="{% if display.mode == 'map' %}{{ display.url|remove_query_param:'page' }}{% else %}{{ display.url }}{% endif %}">
+                <i class="fa fa-lg ml-2" data-mode="{{ display.mode }}" data-toggle="tooltip" data-placement="top" title="{{ display.localized_mode }}"></i>
+            </a>
+        {% endif %}
+    {% endfor %}
+</div>
+{% endif %}

@@ -414,3 +414,127 @@ def url_anchor(html):
     pat = re.compile(r'(https?:\/\/(?:www\.|(?!www))[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|www\.[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|https?:\/\/(?:www\.|(?!www))[a-zA-Z0-9]\.[^\s]{2,}|www\.[a-zA-Z0-9]\.[^\s]{2,})')
     sub = re.sub(pat, lambda x: '<a href="' + x.group(1) + '">' + x.group(1) + '</a>', html)
     return mark_safe(sub)
+
+
+
+@register.inclusion_tag('helpers/display_modes.html', takes_context=True)
+def display_modes(context):
+    request = context['request']
+    url = request.path
+    modes = context.get('display_modes', ['list', 'table'])
+    current_mode = request.GET.get('display', modes[0])
+    localized_modes = {
+        'table': _('Table'),
+        'list': _('List'),
+        'columns': _('Columns'),
+        'map': _('Map'),
+        'matrix': _('Matrix'),
+        'tv': _('TV'),
+        'graph': _('Graph'),
+        'calendar': _('Calendar'),
+    }
+    displays = get_displays(current_mode, localized_modes, modes, request, url)
+
+    current_paginate_by = ''
+    paginate_values = []
+    available_paginate_values = context.get('paginate_by_display')
+
+    if available_paginate_values:
+        available_paginate_values = available_paginate_values.get(current_mode, [None])
+        available_paginate_values = available_paginate_values if isinstance(available_paginate_values, list) else [available_paginate_values]
+        current_paginate_by = get_current_paginate_by(available_paginate_values, request)
+        paginate_values = get_paginate_by(available_paginate_values, request, url)
+
+    return {
+        'displays': displays,
+        'paginate_values': paginate_values,
+        'current_paginate_by': current_paginate_by
+    }
+
+
+def get_current_paginate_by(available_paginate_values, request):
+    current_paginate_by = request.GET.get('paginate_by', available_paginate_values[0])
+    return int(current_paginate_by) if current_paginate_by in map(str, available_paginate_values) else available_paginate_values[0]
+
+
+def get_displays(current_mode, localized_modes, modes, request, url):
+    displays = []
+
+    for mode in modes:
+        display = {}
+
+        params = request.GET.copy()
+        params['display'] = mode
+
+        is_active = current_mode == mode
+        full_url = f'{url}?{params.urlencode()}'
+
+        display.update({
+            'mode': mode,
+            'active': is_active,
+            'url': full_url,
+            'localized_mode': localized_modes.get(mode, mode)
+        })
+
+        displays.append(display)
+
+    return displays
+
+
+def get_paginate_by(available_paginate_values, request, url):
+    paginate_by_list = []
+
+    if len(available_paginate_values) > 1:
+        for available_paginate_by in available_paginate_values:
+            paginate_by = {}
+
+            params = request.GET.copy()
+            params['paginate_by'] = available_paginate_by
+
+            full_url = f'{url}?{params.urlencode()}'
+
+            paginate_by.update({
+                'value': available_paginate_by,
+                'url': full_url,
+            })
+
+            paginate_by_list.append(paginate_by)
+
+    return paginate_by_list
+
+
+@register.inclusion_tag('helpers/sorting.html', takes_context=True)
+def sorting(context):
+    sorting_list = []
+    request = context['request']
+    sorting_options = context.get('sorting_options', {'-created': 'Recently created'})
+    url = request.path
+    current_sorting = None
+
+    if len(sorting_options.keys()) > 0:
+        first_sorting_option = next(iter(sorting_options.keys()))
+        current_sorting = request.GET.get('sorting', first_sorting_option)
+        current_sorting = current_sorting if current_sorting in sorting_options else first_sorting_option
+        current_sorting = sorting_options.get(current_sorting, current_sorting)
+        current_sorting = str(current_sorting[0]) if isinstance(current_sorting, tuple) else current_sorting
+
+        for sorting_option in sorting_options:
+            sorting = {}
+
+            params = request.GET.copy()
+            params['sorting'] = sorting_option
+            full_url = f'{url}?{params.urlencode()}'
+            mode = sorting_options.get(sorting_option)
+
+            sorting.update({
+                'mode': mode[0] if isinstance(mode, tuple) else mode,
+                'url': full_url,
+            })
+
+            sorting_list.append(sorting)
+
+    return {
+        'sorting_list': sorting_list,
+        'current_sorting': current_sorting
+    }
+
