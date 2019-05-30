@@ -122,7 +122,7 @@ def filtered_values(filter, request_data):
                                 v_display = str(v_display)
                                 value_values.append(v_display)
                             except (KeyError, AttributeError):
-                                value_values.append(str(v))
+                                pass
 
                         value = ', '.join(value_values)
                 else:
