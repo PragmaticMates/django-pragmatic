@@ -9,7 +9,7 @@
         </button>
         <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
             {% for paginate_by in paginate_values %}
-                <a class="dropdown-item" href="{{ paginate_by.url }}">{{ paginate_by.value }}</a>
+                <a class="dropdown-item" href="{{ paginate_by.url|remove_query_param:'page' }}">{{ paginate_by.value }}</a>
             {% endfor %}
         </div>
     </div>
