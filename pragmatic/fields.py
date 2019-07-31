@@ -14,6 +14,11 @@ class AlwaysValidChoiceField(forms.ChoiceField):
         return True
 
 
+class AlwaysValidMultipleChoiceField(forms.MultipleChoiceField):
+    def valid_value(self, value):
+        return True
+    
+    
 class TruncatedModelChoiceField(forms.ModelChoiceField):
     def __init__(self, queryset, empty_label="---------",
                  truncate_suffix='...', truncate_chars=None,
