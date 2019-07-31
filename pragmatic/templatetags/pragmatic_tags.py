@@ -7,7 +7,6 @@ from django.template.defaultfilters import stringfilter
 from django.utils.html import conditional_escape
 from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext, ugettext_lazy as _
-from django_filters.fields import DateRangeField, DateTimeRangeField
 from python_pragmatic.strings import barcode as pragmatic_barcode
 
 register = template.Library()
@@ -538,3 +537,7 @@ def sorting(context):
         'current_sorting': current_sorting
     }
 
+
+@register.filter
+def order_by(queryset, order_by):
+    return queryset.order_by(order_by)
