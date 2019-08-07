@@ -83,6 +83,7 @@ def filtered_values(filter, request_data):
     values = {}
 
     form = filter.form
+    form.full_clean()
     cleaned_data = form.cleaned_data
 
     for param in request_data:
