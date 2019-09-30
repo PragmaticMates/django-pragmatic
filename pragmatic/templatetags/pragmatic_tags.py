@@ -166,6 +166,7 @@ def filtered_values(filter, request_data):
 @register.simple_tag()
 def num_applied_filters(filter, request_data):
     form = filter.form
+    form.full_clean()
     cleaned_data = form.cleaned_data
 
     num_applied_filters = 0
@@ -414,7 +415,6 @@ def url_anchor(html):
     pat = re.compile(r'(https?:\/\/(?:www\.|(?!www))[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|www\.[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|https?:\/\/(?:www\.|(?!www))[a-zA-Z0-9]\.[^\s]{2,}|www\.[a-zA-Z0-9]\.[^\s]{2,})')
     sub = re.sub(pat, lambda x: '<a href="' + x.group(1) + '">' + x.group(1) + '</a>', html)
     return mark_safe(sub)
-
 
 
 @register.inclusion_tag('helpers/display_modes.html', takes_context=True)
