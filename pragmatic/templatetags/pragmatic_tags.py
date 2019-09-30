@@ -23,7 +23,7 @@ def get_item(value, arg):
         arg = ".".join(str(arg).split(".")[1:])
         return get_item(value, arg)
     if hasattr(value, str(arg)):
-        return getattr(value, arg)
+        return getattr(value, str(arg))
     elif isinstance(value, dict) and arg in value:
         return value[arg]
     elif numeric_test.match(str(arg)) and len(value) > int(arg):
