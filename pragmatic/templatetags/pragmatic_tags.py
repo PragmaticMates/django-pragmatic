@@ -3,6 +3,7 @@ import re
 import urllib
 
 from django import template
+from django.conf import settings
 from django.template.defaultfilters import stringfilter
 from django.utils.html import conditional_escape
 from django.utils.safestring import mark_safe
@@ -10,17 +11,25 @@ from django.utils.translation import ugettext, ugettext_lazy as _
 from python_pragmatic.strings import barcode as pragmatic_barcode
 
 register = template.Library()
+numeric_test = re.compile(r'^\d+$')
 
 
 @register.filter
-def get_item(dictionary, key):
-    if isinstance(dictionary, list):
-        dictionary = dict(dictionary)
-
-    try:
-        return dictionary.get(key)
-    except AttributeError:
-        return None
+def get_item(value, arg):
+    """Gets an attribute of an object dynamically AND recursively from a string name"""
+    if "." in str(arg):
+        firstarg = str(arg).split(".")[0]
+        value = get_item(value, firstarg)
+        arg = ".".join(str(arg).split(".")[1:])
+        return get_item(value, arg)
+    if hasattr(value, str(arg)):
+        return getattr(value, arg)
+    elif isinstance(value, dict) and arg in value:
+        return value[arg]
+    elif numeric_test.match(str(arg)) and len(value) > int(arg):
+        return value[int(arg)]
+    else:
+        return getattr(settings, 'TEMPLATE_STRING_IF_INVALID', None)
 
 
 @register.filter
@@ -215,7 +224,7 @@ def qrcode(value, alt=None):
     <img src="http://chart.apis.google.com/chart?chs=150x150&amp;cht=qr&amp;chl=my_string&amp;choe=UTF-8" alt="my alt" />
     """
 
-    url = conditional_escape("http://chart.apis.google.com/chart?%s" %\
+    url = conditional_escape("http://chart.apis.google.com/chart?%s" % \
                              urllib.urlencode({'chs': '250x250', 'cht': 'qr', 'chl': value, 'choe': 'UTF-8'}))
     alt = conditional_escape(alt or value)
 
