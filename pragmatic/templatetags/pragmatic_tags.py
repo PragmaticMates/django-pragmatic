@@ -11,12 +11,14 @@ from django.utils.translation import ugettext, ugettext_lazy as _
 from python_pragmatic.strings import barcode as pragmatic_barcode
 
 register = template.Library()
-numeric_test = re.compile(r'^\d+$')
 
 
 @register.filter
 def get_item(value, arg):
     """Gets an attribute of an object dynamically AND recursively from a string name"""
+
+    numeric_test = re.compile(r'^\d+$')
+
     if "." in str(arg):
         firstarg = str(arg).split(".")[0]
         value = get_item(value, firstarg)
