@@ -20,19 +20,23 @@ def get_item(value, arg):
 
     numeric_test = re.compile(r'^\d+$')
 
+    if isinstance(value, dict) and arg in value:
+        return value[arg]
+
     if "." in str(arg):
         firstarg = str(arg).split(".")[0]
         value = get_item(value, firstarg)
         arg = ".".join(str(arg).split(".")[1:])
+
         return get_item(value, arg)
+
     if hasattr(value, str(arg)):
         return getattr(value, str(arg))
-    elif isinstance(value, dict) and arg in value:
-        return value[arg]
-    elif numeric_test.match(str(arg)) and len(value) > int(arg):
+
+    if numeric_test.match(str(arg)) and len(value) > int(arg):
         return value[int(arg)]
-    else:
-        return getattr(settings, 'TEMPLATE_STRING_IF_INVALID', None)
+
+    return getattr(settings, 'TEMPLATE_STRING_IF_INVALID', None)
 
 
 @register.filter
