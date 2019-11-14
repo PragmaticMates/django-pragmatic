@@ -1,3 +1,4 @@
+import datetime
 import os
 import re
 import urllib
@@ -553,3 +554,8 @@ def sorting(context):
 @register.filter
 def order_by(queryset, order_by):
     return queryset.order_by(order_by)
+
+
+@register.filter
+def add_days(days):
+    return datetime.date.today() + datetime.timedelta(days=days)
