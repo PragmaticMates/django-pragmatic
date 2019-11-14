@@ -8,6 +8,7 @@ from django.conf import settings
 from django.template.defaultfilters import stringfilter
 from django.utils.html import conditional_escape
 from django.utils.safestring import mark_safe
+from django.utils.timezone import now
 from django.utils.translation import ugettext, ugettext_lazy as _
 from python_pragmatic.strings import barcode as pragmatic_barcode
 
@@ -562,4 +563,4 @@ def order_by(queryset, order_by):
 
 @register.filter
 def add_days(days):
-    return datetime.date.today() + datetime.timedelta(days=days)
+    return now() + datetime.timedelta(days=days)
