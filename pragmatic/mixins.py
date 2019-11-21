@@ -284,6 +284,7 @@ class DisplayListViewMixin(object):
         context_data = super().get_context_data(*args, **kwargs)
         context_data['display_modes'] = self.displays
         context_data['paginate_by_display'] = self.paginate_by_display
+        context_data['paginate_by'] = self.paginate_by
         return context_data
 
 
