@@ -564,3 +564,13 @@ def order_by(queryset, order_by):
 @register.filter
 def add_days(days):
     return now() + datetime.timedelta(days=days)
+
+
+@register.filter(is_safe=False)
+def concat(value, arg):
+    """Add the arg to the value."""
+    try:
+        arg = str(arg) if arg else ''
+        return str(value) + arg
+    except Exception:
+        return str(value)
