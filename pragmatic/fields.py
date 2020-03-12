@@ -1,3 +1,4 @@
+import decimal
 from django import forms
 from django.db import models
 from django.utils.datastructures import MultiValueDict
@@ -7,6 +8,9 @@ from django.core.exceptions import ValidationError
 from django.core.validators import EMPTY_VALUES
 from django.utils.encoding import smart_text
 from django.utils.translation import ugettext_lazy as _
+from django_filters.constants import EMPTY_VALUES
+from django_filters.fields import BaseRangeField, BaseCSVField
+from pragmatic.widgets import SliderWidget
 
 
 class AlwaysValidChoiceField(forms.ChoiceField):
@@ -217,3 +221,103 @@ except ImportError:
 #class ExchangeForm(forms.Form):
 #    types = MultiSelectFormField(choices=TYPES)
 #    ...
+
+
+class SliderField(BaseRangeField):
+    widget = SliderWidget
+
+    default_error_messages = {
+        'invalid_values': _('Value should not be 0.')
+    }
+
+    def __init__(self, *args, min_value=0, max_value=100, has_range=False, step=1, show_value=True, appended_text='', **kwargs):
+        self.min = min_value
+        self.max = max_value
+        self.has_range = has_range
+        self.step = step
+        self.show_value = show_value
+        self.appended_text = appended_text
+        super().__init__(*args, **kwargs)
+
+    def prepare_value(self, value):
+        value = super().prepare_value(value)
+
+        if value is None or len(value) == 0:
+            value = [self.min, self.max] if self.has_range else self.min
+
+        if self.has_range:
+            if len(value) == 1:
+                value = [self.min, value[0]]
+
+            try:
+                min = float(value[0])
+            except ValueError:
+                min = self.min
+
+            try:
+                max = float(value[1])
+            except ValueError:
+                max = self.max
+
+            value = str([min, max])
+
+        return value
+
+    def to_python(self, value):
+        value = super().to_python(value)
+
+        if not isinstance(value, list):
+            return value
+
+        if len(value) == 0:
+            return None
+
+        # cast values to Decimal
+        try:
+            value = [decimal.Decimal(i) for i in value]
+        except decimal.InvalidOperation:
+            return None
+
+        # Single value
+        if len(value) == 1:
+            ignore_values = [self.min, self.max] if self.has_range else [self.min]
+            if value[0] in ignore_values and not self.required:
+                return None
+            return slice(self.min, value[0]) if self.has_range else value[0]
+
+        # Interval
+        if not self.required:
+            if value[0] == self.min:
+                value[0] = None
+            if value[1] == self.max:
+                value[1] = None
+
+        if value[0] is None and value[1] is None:
+            return None
+
+        return_value = slice(value[0], value[1])
+        return return_value
+
+    def clean(self, value):
+        if value is not None:
+            value = super(BaseCSVField, self).clean(value)
+
+        if self.required and self.min not in EMPTY_VALUES and value == self.min:
+            raise forms.ValidationError(
+                self.error_messages['invalid_values'],
+                code='invalid_values')
+
+        return value
+
+    def widget_attrs(self, widget):
+        attrs = super().widget_attrs(widget)
+
+        attrs.update({
+            'data-slider-min': str(self.min),
+            'data-slider-max': str(self.max),
+            'data-slider-step': str(self.step),
+            'data-slider-show-value': str(self.show_value),
+            'data-slider-value-after': self.appended_text
+        })
+
+        return attrs

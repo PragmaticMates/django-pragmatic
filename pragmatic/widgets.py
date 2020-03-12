@@ -1,5 +1,6 @@
 from itertools import chain
 
+from django.forms import TextInput
 from django.forms.widgets import CheckboxSelectMultiple, CheckboxInput
 from django.utils.encoding import force_text
 from django.utils.html import format_html
@@ -123,9 +124,7 @@ class GroupedCheckboxSelectMultiple(CheckboxSelectMultiple):
                         if option_value in predefined_values:
                             final_attrs['on_check'] = 'checked'
 
-
                 cb = CheckboxInput(final_attrs, check_test=lambda value: value in str_values)
-
 
                 if cb.check_test(str(option_value)):
                     open_group = True
@@ -148,3 +147,24 @@ class GroupedCheckboxSelectMultiple(CheckboxSelectMultiple):
             })
 
         return mark_safe('\n'.join(output))
+
+
+class SliderWidget(TextInput):
+    template_name = 'widgets/slider_input.html'
+
+    default_attrs = {
+        'data-slider-min': '0',
+        'data-slider-max': '100',
+        'data-slider-step': '1',
+        # 'data-slider-value': '50',
+        'data-slider-tooltip': 'show',
+        'data-slider-show-value': 'true',
+    }
+
+    def __init__(self, attrs=None, render_value=False):
+        super().__init__(attrs)
+        self.render_value = render_value
+        self.attrs.update(self.default_attrs)
+
+        if attrs:
+            self.attrs.update(attrs)
