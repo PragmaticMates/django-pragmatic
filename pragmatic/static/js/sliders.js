@@ -11,6 +11,8 @@ function init_sliders() {
     function init_slider(slider_element) {
         var min = slider_element.attr('data-slider-min');
         var max = slider_element.attr('data-slider-max');
+        var useInput = slider_element.attr('data-slider-input');
+        useInput = typeof useInput === typeof undefined || useInput === 'true';
 
         var slider = slider_element.slider({
             formatter: function (val) {
@@ -23,47 +25,55 @@ function init_sliders() {
         });
 
         function initLabels(value) {
-            var inputAfterWrapper = $('<div class="input-group input-group-sm"><input type="text" class="form-control slider-after"></div>');
-            inputAfterWrapper.insertAfter(sliderElement);
-            var inputAfter = inputAfterWrapper.find('input');
-
-            if (valueAfter) {
-                var afterValueWrapper = $('<div class="input-group-append"><span class="input-group-text">' + valueAfter + '</span></div>');
-                inputAfterWrapper.append(afterValueWrapper)
-            }
-
-            if (value.length > 1) {
-                var inputBeforeWrapper = $('<div class="input-group input-group-sm"><input type="text" class="form-control slider-before"></div>');
-                inputBeforeWrapper.insertBefore(sliderElement);
-                var inputBefore = inputBeforeWrapper.find('input');
+            if (useInput === true) {
+                var inputAfterWrapper = $('<div class="input-group input-group-sm"><input type="text" class="form-control slider-after"></div>');
+                inputAfterWrapper.insertAfter(sliderElement);
+                var inputAfter = inputAfterWrapper.find('input');
 
                 if (valueAfter) {
-                    inputBeforeWrapper.append(afterValueWrapper.clone())
+                    var afterValueWrapper = $('<div class="input-group-append"><span class="input-group-text">' + valueAfter + '</span></div>');
+                    inputAfterWrapper.append(afterValueWrapper)
                 }
 
-                inputBefore.keyup(function () {
-                    setValueByInput(inputBefore, inputAfter);
-                });
+                if (value.length > 1) {
+                    var inputBeforeWrapper = $('<div class="input-group input-group-sm"><input type="text" class="form-control slider-before"></div>');
+                    inputBeforeWrapper.insertBefore(sliderElement);
+                    var inputBefore = inputBeforeWrapper.find('input');
 
-                inputAfter.keyup(function () {
-                    setValueByInput(inputBefore, inputAfter);
-                });
+                    if (valueAfter) {
+                        inputBeforeWrapper.append(afterValueWrapper.clone())
+                    }
 
-                inputBefore.change(function () {
-                    updateValidInputValueOnChange(inputBefore, inputAfter);
-                });
+                    inputBefore.keyup(function () {
+                        setValueByInput(inputBefore, inputAfter);
+                    });
 
-                inputAfter.change(function () {
-                    updateValidInputValueOnChange(inputBefore, inputAfter);
-                });
+                    inputAfter.keyup(function () {
+                        setValueByInput(inputBefore, inputAfter);
+                    });
+
+                    inputBefore.change(function () {
+                        updateValidInputValueOnChange(inputBefore, inputAfter);
+                    });
+
+                    inputAfter.change(function () {
+                        updateValidInputValueOnChange(inputBefore, inputAfter);
+                    });
+                } else {
+                    inputAfter.keyup(function () {
+                        setValueByInput(null, inputAfter);
+                    });
+
+                    inputAfter.change(function () {
+                        updateValidInputValueOnChange(null, inputAfter)
+                    });
+                }
             } else {
-                inputAfter.keyup(function () {
-                    setValueByInput(null, inputAfter);
-                });
+                $('<div class="label slider-after"></div>').insertAfter(sliderElement);
 
-                inputAfter.change(function () {
-                    updateValidInputValueOnChange(null, inputAfter)
-                });
+                if (value.length > 1) {
+                    $('<div class="label slider-before"></div>').insertBefore(sliderElement);
+                }
             }
         }
 
@@ -86,13 +96,24 @@ function init_sliders() {
                 if (values[0] <= min) {
                     values[0] = '-'
                 }
-                parent.find('.slider-before').val(values[0]);
-                parent.find('.slider-after').val(values[1]);
+
+                if (useInput === true){
+                    parent.find('.slider-before').val(values[0]);
+                    parent.find('.slider-after').val(values[1]);
+                } else {
+                    parent.find('.slider-before').html(values[0] + ' ' + valueAfter);
+                    parent.find('.slider-after').html(values[1] + ' ' + valueAfter);
+                }
             } else {
                 if (values <= min) {
                     values = '-'
                 }
-                parent.find('.slider-after').val(values);
+
+                if (useInput === true) {
+                    parent.find('.slider-after').val(values);
+                } else {
+                    parent.find('.slider-after').html(values + ' ' + valueAfter);
+                }
             }
         }
 

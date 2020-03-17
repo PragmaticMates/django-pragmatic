@@ -230,12 +230,13 @@ class SliderField(BaseRangeField):
         'invalid_values': _('Value should not be 0.')
     }
 
-    def __init__(self, *args, min_value=0, max_value=100, has_range=False, step=1, show_value=True, appended_text='', **kwargs):
+    def __init__(self, *args, min_value=0, max_value=100, has_range=False, step=1, show_value=True, appended_text='', show_inputs=True, **kwargs):
         self.min = min_value
         self.max = max_value
         self.has_range = has_range
         self.step = step
         self.show_value = show_value
+        self.show_inputs = show_inputs
         self.appended_text = appended_text
         super().__init__(*args, **kwargs)
 
@@ -317,7 +318,8 @@ class SliderField(BaseRangeField):
             'data-slider-max': str(self.max),
             'data-slider-step': str(self.step),
             'data-slider-show-value': str(self.show_value),
-            'data-slider-value-after': self.appended_text
+            'data-slider-value-after': self.appended_text,
+            'data-slider-input': 'true' if self.show_inputs else 'false'
         })
 
         return attrs
