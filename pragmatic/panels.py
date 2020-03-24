@@ -51,5 +51,5 @@ def sql_explain(request):
             'alias': form.cleaned_data['alias'],
         }
         # Using render_to_response avoids running global context processors.
-        return render_to_response('widgets/sql_explain.html', context)
+        return render_to_response('panels/sql_explain.html', context)
     return HttpResponseBadRequest('Form errors')
