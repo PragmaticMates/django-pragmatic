@@ -1,5 +1,5 @@
 import sqlparse
-from debug_toolbar.panels.sql import SQLPanel
+from debug_toolbar.panels.sql import SQLPanel as ToolbarSQLPanel
 from debug_toolbar.panels.sql import views
 from debug_toolbar.panels.sql.forms import SQLSelectForm
 from django.conf.urls import url
@@ -8,7 +8,7 @@ from django.shortcuts import render_to_response
 from django.views.decorators.csrf import csrf_exempt
 
 
-class PragmaticSQLPanel(SQLPanel):
+class SQLPanel(ToolbarSQLPanel):
     @classmethod
     def get_urls(cls):
         return [
