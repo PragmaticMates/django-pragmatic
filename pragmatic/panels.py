@@ -45,7 +45,7 @@ def sql_explain(request):
         context = {
             'result': result,
             'sql': form.reformat_sql(),
-            'sql_raw': sqlparse.format(sql, reindent=True, keyword_case='upper'),
+            'sql_raw': sqlparse.format(form.cleaned_data['sql'], reindent=True, keyword_case='upper'),
             'duration': form.cleaned_data['duration'],
             'headers': headers,
             'alias': form.cleaned_data['alias'],
