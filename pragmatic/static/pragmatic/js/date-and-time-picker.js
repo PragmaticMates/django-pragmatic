@@ -24,7 +24,7 @@ function init_date_and_time_pickers() {
     }
 
     const commonSettings = {
-        debug: true,
+        debug: false,
         focusOnShow: false,
         keyBinds: getKeyBinds($(this)),
         icons: {
