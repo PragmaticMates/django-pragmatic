@@ -121,6 +121,8 @@ class SignalsHelper(object):
             signal = post_save
         elif signal_type == 'post_delete':
             signal = post_delete
+        elif signal_type == 'm2m_changed':
+            signal = m2m_changed
         else:
             raise NotImplementedError()
 
@@ -138,6 +140,11 @@ class SignalsHelper(object):
     @apm_custom_context('signals')
     def post_delete_tasks_receiver(sender, instance, **kwargs):
         SignalsHelper.execute_instance_tasks(instance, 'post_delete_signal_tasks')
+
+    @staticmethod
+    @apm_custom_context('signals')
+    def m2m_changed_tasks_receiver(sender, instance, **kwargs):
+        SignalsHelper.execute_instance_tasks(instance, 'm2m_changed_signal_tasks')
 
     @staticmethod
     def execute_task(task):
