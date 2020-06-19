@@ -308,17 +308,20 @@ class SortingListViewMixin(object):
 
     @property
     def sorting(self):
-        first_sorting_option = next(iter(self.sorting_options.keys())) if len(self.sorting_options.keys()) > 0 else None
+        first_sorting_option = next(iter(self.get_sorting_options().keys())) if len(self.get_sorting_options().keys()) > 0 else None
         sorting = self.request.GET.get('sorting', first_sorting_option)
-        sorting = sorting if sorting in self.sorting_options else first_sorting_option
-        sorting_value = self.sorting_options.get(sorting)
+        sorting = sorting if sorting in self.get_sorting_options() else first_sorting_option
+        sorting_value = self.get_sorting_options().get(sorting)
         sorting = sorting_value[1] if isinstance(sorting_value, tuple) else sorting
         return sorting
 
     def get_context_data(self, *args, **kwargs):
         context_data = super().get_context_data(*args, **kwargs)
-        context_data['sorting_options'] = self.sorting_options
+        context_data['sorting_options'] = self.get_sorting_options()
         return context_data
+
+    def get_sorting_options(self):
+        return self.sorting_options
 
     def get_queryset(self):
         queryset = super().get_queryset()
