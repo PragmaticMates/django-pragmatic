@@ -10,14 +10,20 @@ from django.urls import translate_url as django_translate_url
 from django.utils.html import conditional_escape
 from django.utils.safestring import mark_safe
 from django.utils.timezone import now
-from django.utils.translation import activate, get_language, ugettext, ugettext_lazy as _
+from django.utils.translation import activate, get_language, ugettext, ugettext_lazy as _, override as override_language
 from python_pragmatic.strings import barcode as pragmatic_barcode
 
 register = template.Library()
 
 
 @register.simple_tag(takes_context=True)
-def translate_url(context, lang=None, *args, **kwargs):
+def translate_url(context, lang, *args, **kwargs):
+    obj = context.get('object', None)
+
+    if obj:
+        with override_language(lang):
+            return obj.get_absolute_url()
+
     path = context['request'].path
     return django_translate_url(path, lang)
 
