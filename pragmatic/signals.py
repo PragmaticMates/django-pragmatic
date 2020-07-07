@@ -6,6 +6,9 @@ from django.db.models.signals import pre_save, pre_delete, post_save, post_delet
 from django.utils.timezone import now
 
 
+APM_DEBUG = getattr(settings, 'APM_DEBUG', False)
+
+
 def add_apm_custom_context(type, value):
     from elasticapm.traces import execution_context
     transaction = execution_context.get_transaction()
@@ -81,7 +84,7 @@ def apm_custom_context(type, instance_attr='instance'):
                     apm_message = f'{func.__module__}.{func.__qualname__}{arguments}'
 
                 if apm_message:
-                    if settings.APM_DEBUG:
+                    if APM_DEBUG:
                         print(f'apm_message [{type}]:', apm_message)
 
                     add_apm_custom_context(type, apm_message)
@@ -162,7 +165,7 @@ class SignalsHelper(object):
         tasks = getattr(instance, attr_name, [])
         total_tasks = len(tasks)
 
-        if settings.APM_DEBUG:
+        if APM_DEBUG:
             SignalsHelper._print('>>> SignalsHelper instance tasks [{} in total]: {}'.format(total_tasks, tasks), total_tasks > 0)
         else:
             SignalsHelper._print('>>> SignalsHelper instance tasks [{} in total]'.format(total_tasks), total_tasks > 0)
