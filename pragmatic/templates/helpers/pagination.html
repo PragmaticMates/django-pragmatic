@@ -1,4 +1,4 @@
-{% load i18n %}
+{% load i18n pragmatic_tags %}
 
 <div class="pagination-wrapper">
     {% if total_count > 0 %}
@@ -10,13 +10,22 @@
     {% if page_numbers|length > 1 %}
         <ul class="pagination">
             {% if has_previous %}
-                <li class="button left"><a href="?{{ page_ident }}={{ previous }}{% for key,value in request.GET.items %}{% ifnotequal key 'page' %}&amp;{{ key }}={{ value }}{% endifnotequal %}{% endfor %}"><i class="fa fa-arrow-left"></i></a></li>
+                {% with previous|stringformat:"s" as page_num %}
+                    {% with page_ident|add:"="|add:page_num as param %}
+                        <li class="button left"><a href="{{ request.get_full_path|replace_query_param:param }}"><i class="fa fa-arrow-left"></i></a></li>
+                    {% endwith %}
+                {% endwith %}
             {% else %}
                 <li class="button left disabled"><a><i class="fa fa-arrow-left"></i></a></li>
             {% endif %}
 
             {% if show_first %}
-                <li><a href="?{{ page_ident }}=1{% for key,value in request.GET.items %}{% ifnotequal key 'page' %}&amp;{{ key }}={{ value }}{% endifnotequal %}{% endfor %}">1</a></li>
+                {% with 1|stringformat:"s" as page_num %}
+                    {% with page_ident|add:"="|add:page_num as param %}
+                        <li><a href="{{ request.get_full_path|replace_query_param:param }}">{{ page_num }}<span></span></a></li>
+                    {% endwith %}
+                {% endwith %}
+
                 {% if show_left_dots %}
                     <li class="disabled dots"><a>...</a></li>
                 {% endif %}
@@ -31,7 +40,11 @@
                         </a>
                     </li>
                 {% else %}
-                    <li><a href="?{{ page_ident }}={{ linkpage }}{% for key,value in request.GET.items %}{% ifnotequal key 'page' %}&amp;{{ key }}={{ value }}{% endifnotequal %}{% endfor %}">{{ linkpage }}<span></span></a></li>
+                    {% with linkpage|stringformat:"s" as page_num %}
+                        {% with page_ident|add:"="|add:page_num as param %}
+                            <li><a href="{{ request.get_full_path|replace_query_param:param }}">{{ page_num }}<span></span></a></li>
+                        {% endwith %}
+                    {% endwith %}
                 {% endifequal %}
             {% endfor %}
 
@@ -40,11 +53,19 @@
                     <li class="dots"><a>...</a></li>
                 {% endif %}
 
-                <li><a href="?{{ page_ident }}={{ count }}{% for key,value in request.GET.items %}{% ifnotequal key 'page' %}&amp;{{ key }}={{ value }}{% endifnotequal %}{% endfor %}">{{ count }}<span></span></a></li>
+                {% with count|stringformat:"s" as page_num %}
+                    {% with page_ident|add:"="|add:page_num as param %}
+                        <li><a href="{{ request.get_full_path|replace_query_param:param }}">{{ page_num }}<span></span></a></li>
+                    {% endwith %}
+                {% endwith %}
             {% endif %}
 
             {% if has_next %}
-                <li class="button right"><a href="?{{ page_ident }}={{ next }}{% for key,value in request.GET.items %}{% ifnotequal key 'page' %}&amp;{{ key }}={{ value }}{% endifnotequal %}{% endfor %}"><i class="fa fa-arrow-right"></i></a></li>
+                {% with next|stringformat:"s" as page_num %}
+                    {% with page_ident|add:"="|add:page_num as param %}
+                        <li class="button right"><a href="{{ request.get_full_path|replace_query_param:param }}"><i class="fa fa-arrow-right"></i></a></li>
+                    {% endwith %}
+                {% endwith %}
             {% else %}
                 <li class="button right disabled"><a><i class="fa fa-arrow-right"></i></a></li>
             {% endif %}
