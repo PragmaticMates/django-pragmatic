@@ -6,12 +6,14 @@ from django.contrib import messages
 from django.contrib.auth.mixins import PermissionRequiredMixin as DjangoPermissionRequiredMixin, AccessMixin
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import PermissionDenied
+from django.core.validators import EMPTY_VALUES
 from django.db.models import F
 from django.db.models.deletion import ProtectedError
 from django.http.response import HttpResponseRedirect, HttpResponse
 from django.shortcuts import redirect
 from django.urls import reverse
 from django.utils import timezone, six
+from django.utils.text import slugify
 from django.utils.translation import ugettext_lazy as _, ugettext
 
 from pragmatic.models import DeletedObject
@@ -308,17 +310,20 @@ class SortingListViewMixin(object):
 
     @property
     def sorting(self):
-        first_sorting_option = next(iter(self.sorting_options.keys())) if len(self.sorting_options.keys()) > 0 else None
+        first_sorting_option = next(iter(self.get_sorting_options().keys())) if len(self.get_sorting_options().keys()) > 0 else None
         sorting = self.request.GET.get('sorting', first_sorting_option)
-        sorting = sorting if sorting in self.sorting_options else first_sorting_option
-        sorting_value = self.sorting_options.get(sorting)
+        sorting = sorting if sorting in self.get_sorting_options() else first_sorting_option
+        sorting_value = self.get_sorting_options().get(sorting)
         sorting = sorting_value[1] if isinstance(sorting_value, tuple) else sorting
         return sorting
 
     def get_context_data(self, *args, **kwargs):
         context_data = super().get_context_data(*args, **kwargs)
-        context_data['sorting_options'] = self.sorting_options
+        context_data['sorting_options'] = self.get_sorting_options()
         return context_data
+
+    def get_sorting_options(self):
+        return self.sorting_options
 
     def get_queryset(self):
         queryset = super().get_queryset()
@@ -333,3 +338,23 @@ class SortingListViewMixin(object):
 
         sorting = F(self.sorting[1:]).desc(nulls_last=True) if self.sorting.startswith('-') else self.sorting
         return queryset.order_by(sorting)
+
+
+class SlugMixin(object):
+    MAX_SLUG_LENGTH = 150
+    FORCE_SLUG_REGENERATION = True
+    SLUG_FIELD = 'title'
+
+    def save(self, **kwargs):
+        if self.slug in EMPTY_VALUES or self.FORCE_SLUG_REGENERATION:
+            slug_field = getattr(self, self.SLUG_FIELD)
+            slug = slugify(slug_field)
+            self.slug = slug
+            index = 1
+
+            # Ensure uniqueness
+            while self.__class__.objects.filter(slug=self.slug).exclude(pk=self.pk).exists():
+                self.slug = f'{slug}-{index}'
+                index += 1
+
+        return super().save(**kwargs)
