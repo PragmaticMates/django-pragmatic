@@ -1,6 +1,8 @@
 import decimal
 from django import forms
+from django.contrib.postgres.fields import ArrayField
 from django.db import models
+from django.forms import CheckboxSelectMultiple
 from django.utils.datastructures import MultiValueDict
 from django.utils.text import capfirst
 from django.core import exceptions
@@ -76,6 +78,33 @@ class RangeField(forms.Field):
             return start, stop
         except (ValueError, TypeError):
             raise ValidationError(self.error_messages['invalid'])
+
+
+class ChoiceArrayField(ArrayField):
+    """
+    A field that allows us to store an array of choices.
+
+    Uses Django 1.9's postgres ArrayField
+    and a MultipleChoiceField for its formfield.
+
+    Usage:
+
+        choices = ChoiceArrayField(models.CharField(max_length=...,
+                                                    choices=(...,)),
+                                   default=[...])
+    """
+
+    def formfield(self, **kwargs):
+        defaults = {
+            'form_class': forms.MultipleChoiceField,
+            'choices': self.base_field.choices,
+            'widget': CheckboxSelectMultiple
+        }
+        defaults.update(kwargs)
+        # Skip our parent's formfield implementation completely as we don't
+        # care for it.
+        # pylint:disable=bad-super-call
+        return super(ArrayField, self).formfield(**defaults)
 
 
 # https://bradmontgomery.net/blog/nice-arrayfield-widgets-choices-and-chosenjs/
