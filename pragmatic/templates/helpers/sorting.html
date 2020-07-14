@@ -4,10 +4,10 @@
     <div class="col-sm-auto sorting py-1">
         <div class="dropdown">
             <b class="text-light mr-1">{% trans 'Sort by' %}:</b>
-            <button class="btn btn-dropdown dropdown-toggle" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+            <button class="btn btn-dropdown dropdown-toggle" type="button" id="dropdownSortingMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                 {{ current_sorting }}
             </button>
-            <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
+            <div class="dropdown-menu" aria-labelledby="dropdownSortingMenuButton">
                 {% for sorting in sorting_list %}
                     <a class="dropdown-item" href="{{ sorting.url }}">{{ sorting.mode }}</a>
                 {% endfor %}
