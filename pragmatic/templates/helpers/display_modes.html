@@ -4,10 +4,10 @@
 <div class="col-sm-auto paginate-by py-1">
     <div class="dropdown d-flex align-items-center">
         <b class="text-light mr-1">{% trans 'Paginate by' %}:</b>
-        <button class="btn btn-dropdown dropdown-toggle" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+        <button class="btn btn-dropdown dropdown-toggle" type="button" id="dropdownPaginateMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
             {{ current_paginate_by }}
         </button>
-        <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
+        <div class="dropdown-menu" aria-labelledby="dropdownPaginateMenuButton">
             {% for paginate_by in paginate_values %}
                 <a class="dropdown-item" href="{{ paginate_by.url|remove_query_param:'page' }}">{{ paginate_by.value }}</a>
             {% endfor %}
