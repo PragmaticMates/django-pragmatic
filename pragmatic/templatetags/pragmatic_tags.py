@@ -1,16 +1,19 @@
 import datetime
+import json
 import os
 import re
 import urllib
-
 from django import template
 from django.conf import settings
+from django.core.serializers.json import DjangoJSONEncoder
+from django.db.models import DateField, Count
+from django.db.models.functions import TruncDay
 from django.template.defaultfilters import stringfilter
 from django.urls import translate_url as django_translate_url
 from django.utils.html import conditional_escape
 from django.utils.safestring import mark_safe
 from django.utils.timezone import now
-from django.utils.translation import activate, get_language, ugettext, ugettext_lazy as _, override as override_language
+from django.utils.translation import ugettext, ugettext_lazy as _, override as override_language
 from python_pragmatic.strings import barcode as pragmatic_barcode
 
 register = template.Library()
@@ -587,3 +590,19 @@ def concat(value, arg):
         return str(value) + arg
     except Exception:
         return str(value)
+
+
+@register.inclusion_tag('admin/chart.html')
+def admin_chart(objects, label=_('New data'), color='red', type='bar', date_field='created'):
+    chart_data = objects \
+        .annotate(date=TruncDay(date_field, output_field=DateField()))\
+        .values("date")\
+        .annotate(y=Count("id"))\
+        .order_by("-date")
+
+    return {
+        'data': json.dumps(list(chart_data), cls=DjangoJSONEncoder),
+        'label': label,
+        'color': color,
+        'type': type
+    }

@@ -1,0 +1,60 @@
+{% load i18n static %}
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.3/Chart.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.3/Chart.bundle.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const ctx = document.getElementById('adminChart').getContext('2d');
+
+  // Sample data
+  const chartData = {{ data | safe }};
+
+  // Parse the dates to JS
+  chartData.forEach((d) => {
+    d.x = new Date(d.date);
+  });
+
+  // Render the chart
+  const chart = new Chart(ctx, {
+    type: '{{ type }}',
+    data: {
+      datasets: [
+        {
+          label: '{{ label }}',
+          data: chartData,
+          backgroundColor: '{{ color }}',
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      scales: {
+        xAxes: [
+          {
+            type: 'time',
+            time: {
+              unit: 'day',
+              round: 'day',
+              tooltipFormat: 'DD.MM.YYYY',
+              displayFormats: {
+                day: 'MMM D',
+              },
+            },
+          },
+        ],
+        yAxes: [
+          {
+            ticks: {
+              beginAtZero: true,
+            },
+          },
+        ],
+      },
+    },
+  });
+});
+</script>
+
+<div style="width: 82%;">
+  <canvas style="margin-bottom: 30px; width: 60%; height: 50%;" id="adminChart"></canvas>
+</div>
