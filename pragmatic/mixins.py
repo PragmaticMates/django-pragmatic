@@ -1,5 +1,8 @@
 import datetime
+import io
 
+import requests
+from PyPDF2 import PdfFileMerger
 from django import forms
 from django.conf import settings
 from django.contrib import messages
@@ -358,3 +361,34 @@ class SlugMixin(object):
                 index += 1
 
         return super().save(**kwargs)
+
+
+class PdfDetailMixin(object):
+    def dispatch(self, request, *args, **kwargs):
+        response = super().dispatch(request, *args, **kwargs)
+
+        if not getattr(response, 'is_rendered', True) and callable(getattr(response, 'render', None)):
+            response.render()
+
+        response = self.render_pdf(response.content, self.get_filename())
+        return response
+
+    def get_filename(self):
+        return f'{self.get_object()}.pdf'
+
+    @staticmethod
+    def render_pdf(html_content, filename='output.pdf', inline=True):
+        content_type = 'inline' if inline else 'attachment'
+        api_url = settings.HTMLTOPDF_API_URL
+        pdf_response = requests.post(api_url, data=html_content)
+        buffer = io.BytesIO(pdf_response.content)
+
+        pdf_merger = PdfFileMerger()
+        pdf_merger.append(buffer)
+        pdf_merger.addMetadata({'/Title': filename})
+        pdf_merger.write(buffer)
+        buffer.seek(0)
+
+        response = HttpResponse(buffer, content_type='application/pdf')
+        response['Content-Disposition'] = f'{content_type}; filename="{filename}"'
+        return response
