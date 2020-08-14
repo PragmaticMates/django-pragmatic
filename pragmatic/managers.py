@@ -6,7 +6,21 @@ from django.template import loader, TemplateDoesNotExist
 
 class EmailManager(object):
     @staticmethod
-    def send_mail(recipient, template_prefix, subject, data=None, attachments=[], request=None):
+    def get_recipient(to):
+        return to if isinstance(to, str) else to.email
+
+    @staticmethod
+    def get_recipients(to):
+        recipient_list = []
+        if isinstance(to, list):
+            for r in to:
+                recipient_list.append(EmailManager.get_recipient(r))
+        else:
+            recipient_list.append(to)
+        return recipient_list
+
+    @staticmethod
+    def send_mail(to, template_prefix, subject, data=None, attachments=[], reply_to=None, request=None):
         # template
         try:
             t = loader.get_template(f'{template_prefix}.txt')
@@ -19,22 +33,19 @@ class EmailManager(object):
         except TemplateDoesNotExist:
             t_html = None
 
-        # recipients
-        recipient_list = [recipient if isinstance(recipient, str) else recipient.email]
-
-        site = get_current_site(request)
-
         # context
         context = {
-            'recipient': recipient,
             'subject': subject,
             'request': request,
-            'site': site,
+            'site': get_current_site(request),
             'settings': settings
         }
 
         if data:
             context.update(data)
+
+        if not isinstance(to, list):
+            context.update({'recipient': to})
 
         # message
         message = t.render(context) if t else ''
@@ -45,7 +56,8 @@ class EmailManager(object):
             subject=subject,
             body=message,
             from_email=settings.DEFAULT_FROM_EMAIL,
-            to=recipient_list,
+            to=EmailManager.get_recipients(to),
+            reply_to=EmailManager.get_recipients(reply_to)
         )
         email.attach_alternative(html_message, "text/html")
 
