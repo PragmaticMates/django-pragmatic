@@ -1,12 +1,12 @@
 from django.conf import settings
 from django.contrib.sites.shortcuts import get_current_site
-from django.core.mail import send_mail
+from django.core.mail import EmailMultiAlternatives
 from django.template import loader, TemplateDoesNotExist
 
 
 class EmailManager(object):
     @staticmethod
-    def send_mail(recipient, template_prefix, subject, data=None, request=None):
+    def send_mail(recipient, template_prefix, subject, data=None, attachments=[], request=None):
         # template
         try:
             t = loader.get_template(f'{template_prefix}.txt')
@@ -40,8 +40,21 @@ class EmailManager(object):
         message = t.render(context) if t else ''
         html_message = t_html.render(context) if t_html else ''
 
+        # message
+        email = EmailMultiAlternatives(
+            subject=subject,
+            body=message,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            to=recipient_list,
+        )
+        email.attach_alternative(html_message, "text/html")
+
+        # attachments
+        for attachment in attachments:
+            email.attach(attachment['filename'], attachment['content'], attachment['content_type'])
+
         if getattr(settings, 'MAILS_QUEUE', None):
             from pragmatic.jobs import send_mail_in_background
-            send_mail_in_background.delay(subject, message, settings.DEFAULT_FROM_EMAIL, recipient_list, html_message=html_message, fail_silently=False)
+            send_mail_in_background.delay(email)
         else:
-            send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, recipient_list, html_message=html_message, fail_silently=False)
+            email.send()
