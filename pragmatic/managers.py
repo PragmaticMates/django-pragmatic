@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.contrib.sites.shortcuts import get_current_site
 from django.core.mail import EmailMultiAlternatives
+from django.core.validators import EMPTY_VALUES
 from django.template import loader, TemplateDoesNotExist
 
 
@@ -63,7 +64,9 @@ class EmailManager(object):
             to=EmailManager.get_recipients(to),
             reply_to=EmailManager.get_recipients(reply_to)
         )
-        email.attach_alternative(html_message, "text/html")
+
+        if html_message not in EMPTY_VALUES:
+            email.attach_alternative(html_message, "text/html")
 
         # attachments
         for attachment in attachments:
