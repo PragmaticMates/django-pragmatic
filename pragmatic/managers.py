@@ -11,12 +11,16 @@ class EmailManager(object):
 
     @staticmethod
     def get_recipients(to):
+        if not to:
+            return None
+
         recipient_list = []
         if isinstance(to, list):
             for r in to:
                 recipient_list.append(EmailManager.get_recipient(r))
         else:
-            recipient_list.append(to)
+            recipient_list.append(EmailManager.get_recipient(to))
+
         return recipient_list
 
     @staticmethod
