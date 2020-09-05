@@ -606,3 +606,11 @@ def admin_chart(objects, label=_('New data'), color='red', type='bar', date_fiel
         'color': color,
         'type': type
     }
+
+
+@register.simple_tag()
+def objects_stats(objects, attribute):
+    return objects\
+        .values(attribute)\
+        .annotate(count=Count(attribute))\
+        .order_by('-count')
