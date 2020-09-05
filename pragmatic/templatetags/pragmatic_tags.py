@@ -6,7 +6,7 @@ import urllib
 from django import template
 from django.conf import settings
 from django.core.serializers.json import DjangoJSONEncoder
-from django.db.models import DateField, Count
+from django.db.models import DateField, Count, Sum
 from django.db.models.functions import TruncDay
 from django.template.defaultfilters import stringfilter
 from django.urls import translate_url as django_translate_url
@@ -609,8 +609,13 @@ def admin_chart(objects, label=_('New data'), color='red', type='bar', date_fiel
 
 
 @register.simple_tag()
-def objects_stats(objects, attribute):
+def objects_stats(objects, count_attr, sum_attr=None):
+    kwargs = {'count': Count(count_attr)}
+
+    if sum_attr:
+        kwargs.update({'sum': Sum(sum_attr)})
+
     return objects\
-        .values(attribute)\
-        .annotate(count=Count(attribute))\
+        .values(count_attr)\
+        .annotate(**kwargs)\
         .order_by('-count')
