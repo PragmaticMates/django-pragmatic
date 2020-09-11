@@ -53,6 +53,11 @@ def get_item(value, arg):
     if numeric_test.match(str(arg)) and len(value) > int(arg):
         return value[int(arg)]
 
+    dict_value = dict(value)
+
+    if isinstance(dict_value, dict) and arg in dict_value:
+        return dict_value[arg]
+
     return getattr(settings, 'TEMPLATE_STRING_IF_INVALID', None)
 
 
