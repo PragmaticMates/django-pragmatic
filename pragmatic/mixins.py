@@ -78,7 +78,7 @@ class StaffRequiredMixin(AccessMixin):
             raise PermissionDenied(self.get_permission_denied_message())
 
         messages.error(self.request, self.get_permission_denied_message())
-        return redirect(getattr(settings, 'LOGIN_REDIRECT_URL', reverse('dashboard')))
+        return redirect(getattr(settings, 'LOGIN_REDIRECT_URL', '/'))
 
 
 class DeleteObjectMixin(object):
