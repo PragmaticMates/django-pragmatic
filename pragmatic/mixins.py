@@ -2,7 +2,6 @@ import datetime
 import io
 
 import requests
-from PyPDF2 import PdfFileMerger
 from django import forms
 from django.conf import settings
 from django.contrib import messages
@@ -383,6 +382,7 @@ class PdfDetailMixin(object):
         pdf_response = requests.post(api_url, data=html_content)
         buffer = io.BytesIO(pdf_response.content)
 
+        from PyPDF2 import PdfFileMerger
         pdf_merger = PdfFileMerger()
         pdf_merger.append(buffer)
         pdf_merger.addMetadata({'/Title': filename})
