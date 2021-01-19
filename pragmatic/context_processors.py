@@ -24,17 +24,12 @@ def url_identifier(request):
     except AttributeError:
         return {}
 
-    try:
-        namespace = request.resolver_match.namespaces[0]
-        return {
-            'url_namespace': namespace,
-            'url_name': url_name,
-            'url_id': namespace + ':' + url_name
-        }
-    except IndexError:
-        return {
-            'url_id': url_name
-        }
+    namespaces = request.resolver_match.namespaces
+    return {
+        'url_namespaces': namespaces,
+        'url_name': url_name,
+        'url_id': ':'.join(namespaces + [url_name])
+    }
 
 
 def settings(request):
