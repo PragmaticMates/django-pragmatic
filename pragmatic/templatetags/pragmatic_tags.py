@@ -37,8 +37,10 @@ def get_item(value, arg):
 
     numeric_test = re.compile(r'^\d+$')
 
-    if isinstance(value, dict) and arg in value:
+    try:  # for dict and  __getitem__(self, name)
         return value[arg]
+    except KeyError:
+        pass
 
     if "." in str(arg):
         firstarg = str(arg).split(".")[0]
