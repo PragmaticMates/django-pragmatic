@@ -39,7 +39,7 @@ def get_item(value, arg):
 
     try:  # for dict and  __getitem__(self, name)
         return value[arg]
-    except KeyError:
+    except (KeyError, TypeError) as error:
         pass
 
     if "." in str(arg):
