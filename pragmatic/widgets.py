@@ -24,23 +24,23 @@ class GroupedCheckboxSelectMultiple(CheckboxSelectMultiple):
 
         ), widget=GroupedCheckboxSelectMultiple(attrs={
             'groups': (
-                (ugettext(u'Group 1'), {
+                (ugettext('Group 1'), {
                     'classes': ('col-md-3', ),
                     'choices': (('a', 'a'), ('b', 'b'), ),
                 }),
 
-                (ugettext(u'Group 2'), {
+                (ugettext('Group 2'), {
                     'classes': ('col-md-3', ),
                     'predefined_values_on_check': 'all'|None|list(),
                     'choices': (('c', 'c'), ('d', 'd'), ),
                 }),
 
-                (ugettext(u'Group 3'), {
+                (ugettext('Group 3'), {
                     'classes': ('col-md-3', ),
                     'choices': (('e', 'e'), ('f', 'f'), ),
                 }),
 
-                (ugettext(u'Group 4'), {
+                (ugettext('Group 4'), {
                     'classes': ('col-md-3', ),
                     'choices': (('g', 'g'), ('h', 'h'), ),
                 }),

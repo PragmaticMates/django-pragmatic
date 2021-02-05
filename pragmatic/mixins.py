@@ -13,8 +13,7 @@ from django.db.models import F
 from django.db.models.deletion import ProtectedError
 from django.http.response import HttpResponseRedirect, HttpResponse
 from django.shortcuts import redirect
-from django.urls import reverse
-from django.utils import timezone, six
+from django.utils import timezone
 from django.utils.text import slugify
 from django.utils.translation import ugettext_lazy as _, ugettext
 
@@ -82,9 +81,9 @@ class StaffRequiredMixin(AccessMixin):
 
 class DeleteObjectMixin(object):
     template_name = 'confirm_delete.html'
-    title = _(u'Delete object')
-    message_success = _(u'Object successfully deleted.')
-    message_error = _(u'Object could not be deleted, check if some objects are not associated with it.')
+    title = _('Delete object')
+    message_success = _('Object successfully deleted.')
+    message_error = _('Object could not be deleted, check if some objects are not associated with it.')
     back_url = None
     failure_url = None
 
@@ -192,8 +191,8 @@ class FPDFMixin(object):
     ORIENTATION_PORTRAIT = 'P'
     ORIENTATION_LANDSCAPE = 'L'
     ORIENTATIONS = (
-        (ORIENTATION_PORTRAIT, _(u'Portrait')),
-        (ORIENTATION_LANDSCAPE, _(u'Landscape'))
+        (ORIENTATION_PORTRAIT, _('Portrait')),
+        (ORIENTATION_LANDSCAPE, _('Landscape'))
     )
     orientation = ORIENTATION_PORTRAIT
     margin_left = 8
@@ -204,6 +203,12 @@ class FPDFMixin(object):
     def render(self, **kwargs):
         # Go through keyword arguments, and either save their values to our
         # instance, or raise an error.
+
+        try:
+            from django.utils import six
+        except ImportError:
+            import six
+
         for key, value in six.iteritems(kwargs):
             setattr(self, key, value)
 

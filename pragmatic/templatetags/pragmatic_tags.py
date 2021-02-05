@@ -234,10 +234,10 @@ def num_applied_filters(filter, request_data):
 def filtered_objects_counts(filtered, all):
     try:
         if filtered == all or all == 0:
-            return mark_safe('%s: <strong>%d</strong>' % (ugettext(u'total'), all))
+            return mark_safe('%s: <strong>%d</strong>' % (ugettext('total'), all))
         else:
             percent = 100 * float(filtered) / all
-            return mark_safe('<strong>%d (%.2f%%)</strong> %s %d' % (filtered, percent, ugettext(u'filtered, from a total of'), all))
+            return mark_safe('<strong>%d (%.2f%%)</strong> %s %d' % (filtered, percent, ugettext('filtered, from a total of'), all))
     except (ValueError, TypeError):
         return ''
 
@@ -275,7 +275,7 @@ def barcode(code, args=None):
     except IllegalCharacterError as e:
         message = unicode(e)
         character = message.split(':', 1)[1]
-        return u'{}: {}'.format(_('Invalid characters'), character)
+        return '{}: {}'.format(_('Invalid characters'), character)
 
 
 @register.inclusion_tag('helpers/pagination.html', takes_context=True)
