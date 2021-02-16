@@ -1,10 +1,13 @@
 from itertools import chain
 
+from django import forms
+from django.conf import settings
 from django.forms import TextInput
 from django.forms.widgets import CheckboxSelectMultiple, CheckboxInput
 from django.utils.encoding import force_text
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
+from mapwidgets import GooglePointFieldWidget
 
 
 class GroupedCheckboxSelectMultiple(CheckboxSelectMultiple):
@@ -168,3 +171,53 @@ class SliderWidget(TextInput):
 
         if attrs:
             self.attrs.update(attrs)
+
+
+class VersionedMediaJS:
+    def __init__(self, path, version):
+        self.path = forms.widgets.Media.absolute_path(None, path)
+        self.version = version
+
+    def __repr__(self):
+        return 'VersionedMediaJS(path=%r, version=%r)' % (self.path, self.version)
+
+    def __str__(self):
+        return self.render()
+
+    def render(self):
+        html = '<script type="text/javascript" src="{0}?{1}"></script>'
+        return format_html(html, mark_safe(self.path), self.version)
+
+    @staticmethod
+    def render_js(media_object):
+        html = []
+        for path in media_object._js:
+            if hasattr(path, 'version'):
+                html.append(path.render())
+            else:
+                html.append(format_html('<script type="text/javascript" src="{0}"></script>', media_object.absolute_path(path)))
+        return html
+
+
+forms.widgets.Media.render_js = VersionedMediaJS.render_js
+
+
+class AutocompleteGooglePointFieldWidget(GooglePointFieldWidget):
+    @property
+    def media(self):
+        js = super().media._js + ["pragmatic/js/map-widget-utils.js", ]
+        return forms.Media(js=js, css=super().media._css)
+
+    def render(self, name, value, attrs=None, renderer=None):
+        return super().render(name, value, attrs)
+
+
+class AutocompleteCityWidget(TextInput):
+    def __init__(self, attrs=None):
+        super().__init__(attrs)
+        from mapwidgets.settings import mw_settings
+        self.attrs['data-google-key'] = mw_settings.GOOGLE_MAP_API_KEY
+
+    @property
+    def media(self):
+        return forms.Media(js=(VersionedMediaJS('pragmatic/js/city-autocomplete.js', settings.DEPLOYMENT_TIMESTAMP),))
