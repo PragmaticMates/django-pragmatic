@@ -122,7 +122,18 @@ def filtered_values(filter, request_data):
                                 v_display = str(v_display)
                                 value_values.append(v_display)
                             except (KeyError, AttributeError):
-                                pass
+                                try:
+                                    # grouped choices
+                                    choices = {}
+                                    for group in form.fields[filter_name].choices:
+                                        choices.update(dict(group[1]))
+
+                                    v_display = choices[v]
+                                    v_display = str(v_display)
+                                    value_values.append(v_display)
+                                except (KeyError, AttributeError):
+                                    pass
+
 
                         value = ', '.join(value_values)
                 else:
