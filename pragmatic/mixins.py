@@ -79,6 +79,16 @@ class StaffRequiredMixin(AccessMixin):
         return redirect(getattr(settings, 'LOGIN_REDIRECT_URL', '/'))
 
 
+class SuperuserRequiredMixin(StaffRequiredMixin):
+    """
+    CBV mixin which verifies that the current user is superuser
+    """
+    def dispatch(self, request, *args, **kwargs):
+        if not request.user.is_superuser:
+            return self.handle_no_permission()
+        return super(SuperuserRequiredMixin, self).dispatch(request, *args, **kwargs)
+
+
 class DeleteObjectMixin(object):
     template_name = 'confirm_delete.html'
     title = _('Delete object')
