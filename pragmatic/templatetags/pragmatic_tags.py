@@ -66,6 +66,11 @@ def get_item(value, arg):
     return getattr(settings, 'TEMPLATE_STRING_IF_INVALID', None)
 
 
+@register.filter()
+def get_list(querydict, param):
+    return querydict.getlist(param)
+
+
 @register.filter
 @stringfilter
 def split(string, sep):
