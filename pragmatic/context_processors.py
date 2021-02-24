@@ -20,11 +20,12 @@ def installed_apps(request):
 
 def url_identifier(request):
     try:
-        url_name = request.resolver_match.url_name
+        url_name = request.resolver_match.url_name or ''
     except AttributeError:
         return {}
 
     namespaces = request.resolver_match.namespaces
+
     return {
         'url_namespaces': namespaces,
         'url_name': url_name,
