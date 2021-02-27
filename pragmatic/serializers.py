@@ -1,3 +1,5 @@
+import json
+
 from django.contrib.gis.geos import Point
 from rest_framework import serializers
 
@@ -13,4 +15,6 @@ class PointField(serializers.Field):
         }
 
     def to_internal_value(self, data):
-        return Point(data.longitude, data.latitude)
+        if isinstance(data, str):
+            data = json.loads(data)
+        return Point(data['longitude'], data['latitude'])
