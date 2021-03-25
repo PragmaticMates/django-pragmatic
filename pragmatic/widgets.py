@@ -220,4 +220,5 @@ class AutocompleteCityWidget(TextInput):
 
     @property
     def media(self):
-        return forms.Media(js=(VersionedMediaJS('pragmatic/js/city-autocomplete.js', settings.DEPLOYMENT_TIMESTAMP),))
+        # js = VersionedMediaJS('pragmatic/js/city-autocomplete.js', settings.DEPLOYMENT_TIMESTAMP)  # TODO: fix version
+        return forms.Media(js=('pragmatic/js/city-autocomplete.js',))
