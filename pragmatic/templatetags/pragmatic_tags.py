@@ -39,7 +39,7 @@ def get_item(value, arg):
 
     try:  # for dict and  __getitem__(self, name)
         return value[arg]
-    except (KeyError, TypeError) as error:
+    except (KeyError, TypeError, IndexError):
         pass
 
     if "." in str(arg):
@@ -53,7 +53,10 @@ def get_item(value, arg):
         return getattr(value, str(arg))
 
     if numeric_test.match(str(arg)) and len(value) > int(arg):
-        return value[int(arg)]
+        try:
+            return value[int(arg)]
+        except (KeyError, IndexError):
+            pass
 
     try:
         dict_value = dict(value)
