@@ -25,7 +25,12 @@ def translate_url(context, lang, *args, **kwargs):
     
     if not path:
         obj = context.get('object', None)
-        path = obj.get_absolute_url() if obj else context['request'].path
+
+        if obj:
+            with override_language(lang):
+                return obj.get_absolute_url()
+
+        path = context['request'].path
 
     return django_translate_url(path, lang)
 
