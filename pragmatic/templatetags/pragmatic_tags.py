@@ -652,3 +652,8 @@ def objects_stats(objects, count_attr, sum_attr=None):
         .values(count_attr)\
         .annotate(**kwargs)\
         .order_by('-count')
+
+
+@register.filter
+def date_from_isoformat(date_string):
+    return datetime.date.fromisoformat(date_string)
