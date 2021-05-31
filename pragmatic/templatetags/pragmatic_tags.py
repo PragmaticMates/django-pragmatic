@@ -22,7 +22,7 @@ register = template.Library()
 @register.simple_tag(takes_context=True)
 def translate_url(context, lang, *args, **kwargs):
     path = kwargs.get('path', None)
-    
+
     if not path:
         obj = context.get('object', None)
 
@@ -30,7 +30,8 @@ def translate_url(context, lang, *args, **kwargs):
             with override_language(lang):
                 return obj.get_absolute_url()
 
-        path = context['request'].path
+        request = context.get('request', None)
+        path = request.path if request else f'/{lang}/'
 
     return django_translate_url(path, lang)
 
