@@ -33,9 +33,10 @@
         };
 
         widgets.each(function () {
+            var parent = $(this).closest('.waypoint');
             var input = $(this)[0];
             var rel = $(this).attr('rel');
-            var rel_input = $('[name=' + rel + ']');
+            var rel_input = parent.find('[name$=' + rel + ']');
             var $input = $(this);
             var autocomplete = new google.maps.places.Autocomplete(input, options);
 
