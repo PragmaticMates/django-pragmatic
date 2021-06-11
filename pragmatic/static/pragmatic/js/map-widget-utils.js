@@ -3,10 +3,11 @@
         var locationInput = widget.locationInput;
         var form = $(locationInput).closest('form');
         var prefix = '';
-
         var waypoint = $(locationInput).closest('.waypoint');
+
         if (waypoint.length > 0) {
-            prefix = 'waypoint_' + waypoint.attr('rel') + '_';
+            var relVal = waypoint.attr('rel');
+            prefix = (relVal.endsWith('_')) ? 'waypoint_' + relVal : 'waypoint_' + relVal+ '-';
         }
 
         var street = form.find('[name="' + prefix + 'street"]');
