@@ -15,6 +15,7 @@
         var city = form.find('[name="' + prefix + 'city"]');
         var country = form.find('[name="' + prefix + 'country"]');
         var company = form.find('[name="' + prefix + 'company"]');
+        var address = form.find('[name="' + prefix + 'address"]');
         var name = form.find('[name="' + prefix + 'name"]');
 
         // update every time the text inputs change
@@ -45,7 +46,7 @@
                         city.val(data.address.city);
                         country.val(data.address.country);
                         country.trigger('change.select2');
-                        if(data.address.point) {
+                        if (data.address.point) {
                             widget.updateLocation(data.address.point.latitude, data.address.point.longitude);
                             widget.fitBoundMarker();
                         } else {
@@ -55,6 +56,39 @@
                     },
                     error: function (data) {
                         console.log('Get company failed!');
+                    }
+                });
+            }
+        });
+
+        // update address
+        $(address).change(function () {
+            var addressId = address.val();
+            if (addressId) {
+                $.ajax({
+                    type: 'GET',
+                    url: '/api/v1/directory/addresses/' + addressId + '/',  // TODO: replace with variable
+                    dataType: "json",
+                    success: function (data) {
+                        name.val(data.name);
+                        street.val(data.street);
+                        postcode.val(data.postcode);
+                        city.val(data.city);
+                        country.val(data.country);
+                        country.trigger('change.select2')
+
+                        if (data.point) {
+                            // TODO: fix map refresh
+                            widget.updateLocation(data.point.latitude, data.point.longitude);
+                            widget.fitBoundMarker();
+                        } else {
+                            callUpdateMap();
+                        }
+
+                        onPostCodeChanged();
+                    },
+                    error: function (data) {
+                        console.log('Get address failed!');
                     }
                 });
             }
