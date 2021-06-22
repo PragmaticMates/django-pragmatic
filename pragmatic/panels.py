@@ -6,9 +6,12 @@ from django.conf.urls import url
 from django.http import HttpResponseBadRequest
 
 try:
-    from django.shortcuts import render_to_response as render
-except ImportError:
+    # Django>=3.0
     from django.shortcuts import render
+except ImportError:
+    # older Django
+    from django.shortcuts import render_to_response as render
+
 
 from django.views.decorators.csrf import csrf_exempt
 
