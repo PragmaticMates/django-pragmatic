@@ -4,7 +4,12 @@ from debug_toolbar.panels.sql import views
 from debug_toolbar.panels.sql.forms import SQLSelectForm
 from django.conf.urls import url
 from django.http import HttpResponseBadRequest
-from django.shortcuts import render_to_response
+
+try:
+    from django.shortcuts import render_to_response as render
+except ImportError:
+    from django.shortcuts import render
+
 from django.views.decorators.csrf import csrf_exempt
 
 
@@ -50,6 +55,6 @@ def sql_explain(request):
             'headers': headers,
             'alias': form.cleaned_data['alias'],
         }
-        # Using render_to_response avoids running global context processors.
-        return render_to_response('panels/sql_explain.html', context)
+        # Using render()/render_to_response() avoids running global context processors.
+        return render('panels/sql_explain.html', context)
     return HttpResponseBadRequest('Form errors')
