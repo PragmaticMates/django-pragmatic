@@ -190,7 +190,7 @@ class SignalsHelper(object):
             return None
 
     @staticmethod
-    def attribute_changed(instance, diff_fields):
+    def attribute_changed(instance, diff_fields, diff_contains={}):
         obj = SignalsHelper.get_db_instance(instance)
 
         if not obj:
@@ -203,7 +203,19 @@ class SignalsHelper(object):
             instance_value = getattr(instance, field)
 
             if saved_value != instance_value:
-                return True
+                try:
+                    # get specific values for field if supplied
+                    diff_values = diff_contains.get(field)
+                except KeyError:
+                    return True
+
+                if not isinstance(diff_values, list):
+                    diff_values = [diff_values]
+
+                for diff_value in diff_values:
+                    # check if one of supplied field values was included
+                    if diff_value in [saved_value, instance_value]:
+                        return True
 
         return False
 
