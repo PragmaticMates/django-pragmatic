@@ -205,7 +205,7 @@ class SignalsHelper(object):
             if saved_value != instance_value:
                 try:
                     # get specific values for field if supplied
-                    diff_values = diff_contains.get(field)
+                    diff_values = diff_contains[field]
                 except KeyError:
                     return True
 
