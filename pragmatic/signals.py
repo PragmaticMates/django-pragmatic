@@ -1,8 +1,7 @@
 from functools import wraps
-
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
-from django.db.models.signals import pre_save, pre_delete, post_save, post_delete, pre_init, post_init, pre_migrate, post_migrate, m2m_changed
+from django.db.models import signals as django_signals
 from django.utils.timezone import now
 
 
@@ -52,30 +51,9 @@ def apm_custom_context(type, instance_attr='instance'):
                     instance = kwargs.get(instance_attr, None)
 
                     if instance:
-                        prefix = ''
-
                         signal = kwargs.get('signal')
-
-                        if signal == pre_migrate:
-                            prefix = '[pre_migrate]\t'
-                        elif signal == pre_init:
-                            prefix = '[pre_init]\t'
-                        elif signal == pre_save:
-                            prefix = '[pre_save]\t'
-                        elif signal == pre_delete:
-                            prefix = '[pre_delete]\t'
-                        elif signal == post_migrate:
-                            prefix = '[post_migrate]\t'
-                        elif signal == post_init:
-                            prefix = '[post_init]\t'
-                        elif signal == post_save:
-                            prefix = '[post_save]\t'
-                        elif signal == post_delete:
-                            prefix = '[post_delete]\t'
-                        elif signal == m2m_changed:
-                            prefix = '[m2m_changed]\t'
-
-                        apm_message = f'{prefix}{func.__module__}.{func.__qualname__}({instance.__class__.__name__}: {instance.id})'.strip()
+                        signal_name = SignalsHelper.get_signal_name(signal)
+                        apm_message = f'[{signal_name}]\t{func.__module__}.{func.__qualname__}({instance.__class__.__name__}: {instance.id})'.strip()
 
                 elif type == 'tasks':
                     # execute task with given arguments
@@ -120,12 +98,8 @@ class SignalsHelper(object):
         attr_name = f'{signal_type}_signal_tasks'
         receiver_name = f'{signal_type}_tasks_receiver'
 
-        if signal_type == 'post_save':
-            signal = post_save
-        elif signal_type == 'post_delete':
-            signal = post_delete
-        elif signal_type == 'm2m_changed':
-            signal = m2m_changed
+        if signal_type in ['post_save', 'post_delete', 'm2m_changed']:
+            signal = getattr(django_signals, signal_type)
         else:
             raise NotImplementedError()
 
@@ -220,7 +194,10 @@ class SignalsHelper(object):
         return False
 
     @staticmethod
+    def get_signal_name(signal):
+        return next((v for v, k in django_signals.__dict__.items() if k == signal), str(signal))
+
+    @staticmethod
     def _print(message, force_print=False):
         if (settings.DEBUG or force_print) and getattr(settings, 'TEST_PRINT_TASKS', True):
             print(message)
-

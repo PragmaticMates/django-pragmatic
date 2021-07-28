@@ -4,7 +4,7 @@ from setuptools import setup
 
 setup(
     name='django-pragmatic',
-    version='3.4.1',
+    version='3.5.0',
     description='Pragmatic tools and utilities for Django projects',
     long_description=open('README.rst').read(),
     author='Pragmatic Mates',
@@ -14,7 +14,9 @@ setup(
     url='https://github.com/PragmaticMates/django-pragmatic',
     packages=[
         'pragmatic',
+        'pragmatic.management',
         'pragmatic.migrations',
+        'pragmatic.models',
         'pragmatic.templatetags'
     ],
     include_package_data=True,
