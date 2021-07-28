@@ -2,7 +2,7 @@ from django.db.models.expressions import Func, Expression
 from pragmatic.models.expressions import F, Value
 
 
-class Round2(Func):
+class Round(Func):
     function = 'ROUND'
     arity = 2
 
