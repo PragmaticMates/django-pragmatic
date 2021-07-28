@@ -7,6 +7,7 @@ from django.core.validators import EMPTY_VALUES
 from django.db.models import Max, Min, Count, Q
 from django_filters.constants import EMPTY_VALUES
 from pragmatic.fields import TruncatedModelChoiceField, RangeField, SliderField
+from django.core.exceptions import ImproperlyConfigured
 
 
 class ArrayFilter(django_filters.CharFilter):
@@ -125,7 +126,11 @@ class SliderFilter(django_filters.Filter):
     def get_segments(self, segment):
         # read cache
         segment_details = self.get_segment_details(segment)
-        saved_value = cache.get(segment_details['cache_key'], version=segment_details['cache_version'])
+
+        try:
+            saved_value = cache.get(segment_details['cache_key'], version=segment_details['cache_version'])
+        except ImproperlyConfigured:
+            saved_value = None
 
         if saved_value is not None:
             return saved_value
@@ -168,5 +173,9 @@ class SliderFilter(django_filters.Filter):
         }
 
         # save into cache
-        cache.set(segment_details['cache_key'], store, version=segment_details['cache_version'], timeout=86400)
+        try:
+            cache.set(segment_details['cache_key'], store, version=segment_details['cache_version'], timeout=86400)
+        except ImproperlyConfigured:
+            pass
+
         return store
