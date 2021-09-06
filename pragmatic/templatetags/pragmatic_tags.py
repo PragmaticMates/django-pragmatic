@@ -440,7 +440,7 @@ def modify_query_param(url, param, action):
     # convert params string to querydict
     querydict = QueryDict(params, mutable=True)
 
-    for key, value in QueryDict(param).items():
+    for key, value in QueryDict(param).lists():
         if action == 'remove':
             # remove param from querydict (if exists)
             if key in querydict:
@@ -448,10 +448,10 @@ def modify_query_param(url, param, action):
         elif action == 'add':
             # add param to querydict (if not exists)
             if key not in querydict:
-                querydict[key] = value
+                querydict.setlist(key, value)
         elif action == 'replace':
             # add (and replace) param in querydict
-            querydict[key] = value
+            querydict.setlist(key, value)
 
     # encode params to string
     encoded_params = querydict.urlencode()
