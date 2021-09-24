@@ -378,13 +378,15 @@ class SlugMixin(object):
 
 
 class PdfDetailMixin(object):
+    inline = True
+
     def dispatch(self, request, *args, **kwargs):
         response = super().dispatch(request, *args, **kwargs)
 
         if not getattr(response, 'is_rendered', True) and callable(getattr(response, 'render', None)):
             response.render()
 
-        response = self.render_pdf(response.content, self.get_filename())
+        response = self.render_pdf(response.content, self.get_filename(), self.inline)
         return response
 
     def get_filename(self):
