@@ -28,3 +28,9 @@ class ExtensionDiscoverRunner(DiscoverRunner):
         TestResult._exc_info_to_string = exc_info_to_string
 
         super().run_tests(*args, **kwargs)
+
+
+class TeamcityExtensionDiscoverRunner(ExtensionDiscoverRunner):
+    def run_suite(self, suite, **kwargs):
+        from teamcity.unittestpy import TeamcityTestRunner
+        return TeamcityTestRunner().run(suite)
