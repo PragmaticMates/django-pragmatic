@@ -13,7 +13,8 @@ from rq import SimpleWorker
 
 
 class RqMixin(object):
-    def __init__(self):
+    def setUp(self):
+        super().setUp()
         queue = django_rq.get_queue('default')
         queue.empty()
 
