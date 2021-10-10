@@ -9,25 +9,18 @@ import django_filters
 from django.apps import apps
 
 
-class MissingTestHelper(object):
-    @property
-    def modules_to_check(self):
-        # where to look for objects and methods that should be tested, eg. [app.sub_app_1, app.sub_app_2]
-        raise NotImplementedError()
-
-    @property
-    def modules_to_exclude(self):
-        # where not to look for objects and methods that should be tested, eg. [app.sub_app_1, app.sub_app_2]
-        return ['migrations', 'commands', 'tests', 'settings']
+class MissingTestMixin(object):
+    CHECK_MODULES = []  # where to look for objects and methods that should be tested, override this, eg. [app.sub_app_1, app.sub_app_2]
+    EXCLUDE_MODULES = ['migrations', 'commands', 'tests', 'settings']   # where not to look for objects and methods that should be tested
 
     @property
     def apps_to_check(self):
-        return [app.name for app in apps.get_app_configs() if app.name.startswith(tuple(self.modules_to_check))]
+        return [app.name for app in apps.get_app_configs() if app.name.startswith(tuple(self.CHECK_MODULES))]
 
     def get_tests_by_module(self, parent_module_names=[], submodule_name='tests'):
         # returns method names of test classes
         if not parent_module_names:
-            parent_module_names = self.modules_to_check
+            parent_module_names = self.CHECK_MODULES
 
         module_names = self.get_submodule_names(parent_module_names, submodule_name)
         tests = set()
@@ -91,7 +84,7 @@ class MissingTestHelper(object):
         return (module_names)
 
     def test_for_missing_filters(self):
-        module_names = self.get_submodule_names(self.modules_to_check, 'filters', self.modules_to_exclude)
+        module_names = self.get_submodule_names(self.CHECK_MODULES, 'filters', self.EXCLUDE_MODULES)
         filter_classes = set()
 
         # get filter classes
@@ -141,7 +134,7 @@ class MissingTestHelper(object):
                 self.assertEqual(not_tested_methods, set(), f'missing tests for {not_tested_methods}')
 
     def test_for_missing_managers(self):
-        module_names = self.get_submodule_names(self.modules_to_check, ['managers', 'querysets'], self.modules_to_exclude)
+        module_names = self.get_submodule_names(self.CHECK_MODULES, ['managers', 'querysets'], self.EXCLUDE_MODULES)
         manager_classes = set()
 
         # get manager classes
@@ -215,7 +208,7 @@ class MissingTestHelper(object):
                         self.assertEqual(managers_to_test, tested_managers, f'Missing managers for app {app_name}: {missing_managers}')
 
     def test_for_missing_signals(self):
-        module_names = self.get_submodule_names(self.modules_to_check, ['signals'], self.modules_to_exclude)
+        module_names = self.get_submodule_names(self.CHECK_MODULES, ['signals'], self.EXCLUDE_MODULES)
         signals = set()
 
         # get signal classes
@@ -240,8 +233,8 @@ class MissingTestHelper(object):
 
     def test_for_commented_asserts(self):
         # check that no "self.assert..." are left commented after updating/debugging
-        exclude_modules = [m for m in self.modules_to_exclude if m != 'tests']
-        module_names = self.get_submodule_names(self.modules_to_check, ['tests'], exclude_modules)
+        exclude_modules = [m for m in self.EXCLUDE_MODULES if m != 'tests']
+        module_names = self.get_submodule_names(self.CHECK_MODULES, ['tests'], exclude_modules)
         commented_asserts = set()
 
         for module_name in module_names:
@@ -266,7 +259,7 @@ class MissingTestHelper(object):
         self.assertEqual(commented_asserts, [], f'There are som commented asserts')
 
     def test_for_missing_permissions(self):
-        explicit_permission_occurances = self.get_explicit_permissions_by_module(parent_module_names=self.modules_to_check, submodule_names=self.modules_to_check, exclude=self.modules_to_exclude)
+        explicit_permission_occurances = self.get_explicit_permissions_by_module(parent_module_names=self.CHECK_MODULES, submodule_names=self.CHECK_MODULES, exclude=self.EXCLUDE_MODULES)
         explicit_permissions = {}
         tested_permissions = {}
 
@@ -320,7 +313,7 @@ class MissingTestHelper(object):
                 tested_permissions[permission_name] = {}
                 explicit_permissions[permission_name] = {}
 
-            if not any([exclude_name in path for exclude_name in self.modules_to_exclude]):
+            if not any([exclude_name in path for exclude_name in self.EXCLUDE_MODULES]):
                 tested_permissions[permission_name][path].append(test.__name__)
 
         for permission_name, locations in explicit_permissions.items():
