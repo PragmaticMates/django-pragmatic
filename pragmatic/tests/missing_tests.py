@@ -284,9 +284,8 @@ class MissingTestMixin(object):
             path = path[0].replace('permission_path = ', '')[1:-1] if path else None
 
             if path not in sys.modules:
-                module_name = 'swida.portal.' if 'swida.portal.' in test.__module__ else 'swida.core.'
-                test_name = test.__name__.replace('test_', module_name)
-                print(test_name)
+                module_name = [m for m in self.CHECK_MODULES if m in test.__module__][0]
+                test_name = test.__name__.replace('test_', f'{module_name}.')
                 path = test_name[:test_name.rfind('.')]
 
                 for i in range(1, test_name.count('_') + 2):
