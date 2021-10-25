@@ -173,11 +173,14 @@ class UrlTestMixin(object):
                     raise TypeError()
 
                 if not isinstance(form, BaseFormSet):
+                    # skip formset data  # TODO: improve
+                    data_without_formset = {key: value for key, value in data.items() if not key.startswith('form-')}
+
                     # check if all fields are passed, if not pass problem fields to fail message
                     self.assertEqual(
-                        data.keys(),
+                        data_without_formset.keys(),
                         form.fields.keys(),
-                        (path_name, 'fields not matching:', set(form.fields.keys()).symmetric_difference(set(data.keys())))
+                        (path_name, 'fields not matching:', set(form.fields.keys()).symmetric_difference(set(data_without_formset.keys())))
                     )
 
                 # test if form is valid, if not pass form errors to fail message
