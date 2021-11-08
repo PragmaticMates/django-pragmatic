@@ -24,7 +24,7 @@
         }
     });
 
-    function init_city_autocomplete(widgets) {
+    init_city_autocomplete = function (widgets) {
         var options = {
             types: ['(cities)'],
             // types: ['(regions)'],
