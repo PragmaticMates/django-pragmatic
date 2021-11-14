@@ -15,7 +15,7 @@ class MissingTestMixin(object):
 
     @property
     def apps_to_check(self):
-        return [app.name for app in apps.get_app_configs() if app.name.startswith(tuple(self.CHECK_MODULES))]
+        return [app for app in apps.get_app_configs() if app.name.startswith(tuple(self.CHECK_MODULES))]
 
     def get_tests_by_module(self, parent_module_names=[], submodule_name='tests'):
         # returns method names of test classes
@@ -159,7 +159,9 @@ class MissingTestMixin(object):
             # test filter class test existence
             self.assertTrue(cls.__name__ in tested_class_names, f'{cls.__module__}.{cls.__name__} test missing')
 
-        for app_name in self.apps_to_check:
+        app_names = [app.name for app in self.apps_to_check]
+
+        for app_name in app_names:
             managers_to_test = set()
 
             for dir_name in ['managers', 'querysets']:
