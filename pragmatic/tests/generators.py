@@ -1,3 +1,37 @@
+import ast
+import functools
+import importlib
+import inspect
+import os
+import re
+import traceback
+from datetime import timedelta
+from pprint import pformat
+
+import sys
+from collections import OrderedDict
+
+from django import urls
+from django.apps import apps
+from django.contrib.auth.models import User
+from django.contrib.contenttypes.models import ContentType
+from django.contrib.gis.db.models import PointField
+from django.contrib.gis.geos import Point
+from django.contrib.postgres.fields import DateTimeRangeField, DateRangeField
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.core.validators import MinValueValidator, MaxValueValidator
+from django.db.models import NOT_PROVIDED, BooleanField, TextField, CharField, SlugField, EmailField, DateTimeField, \
+    DateField, FileField, PositiveSmallIntegerField, DecimalField, IntegerField, QuerySet
+from django.db.models.fields.related import RelatedField, ManyToManyField, ForeignKey, OneToOneField
+from django.test import TestCase
+from django.urls import reverse
+from django.utils.timezone import now
+from django_countries.fields import CountryField as DjangoCountriesCuntrifield
+from django_iban.fields import IBANField, SWIFTBICField
+from internationalflavor.countries import CountryField as InternationalFlavourCountryField
+
+from pragmatic.tests.missing_tests import MissingTestMixin
+
 
 class GenericTestMixin(MissingTestMixin):
     FIELD_VALUES_MAP = {}
@@ -305,6 +339,7 @@ class GenericTestMixin(MissingTestMixin):
             DateTimeRangeField: (now(), now()+timedelta(days=1)),
             DateRangeField: (now().date(), now()+timedelta(days=1)),
             FileField: self.get_pdf_file_mock(),
+            IntegerField: self.get_num_field_mock_value,
             PositiveSmallIntegerField: self.get_num_field_mock_value,
             DecimalField: self.get_num_field_mock_value,
         }
