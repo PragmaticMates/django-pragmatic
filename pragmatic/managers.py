@@ -76,4 +76,4 @@ class EmailManager(object):
             from pragmatic.jobs import send_mail_in_background
             send_mail_in_background.delay(email)
         else:
-            email.send()
+            return email.send()
