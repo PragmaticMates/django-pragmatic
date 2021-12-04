@@ -4,18 +4,15 @@ import pkgutil
 import re
 import sys
 
-
 import django_filters
 from django.apps import apps
 
+from pragmatic.tests.generators import GenericTestMixin
 
-class MissingTestMixin(object):
+
+class MissingTestMixin(GenericTestMixin):
     CHECK_MODULES = []  # where to look for objects and methods that should be tested, override this, eg. [app.sub_app_1, app.sub_app_2]
     EXCLUDE_MODULES = ['migrations', 'commands', 'tests', 'settings']   # where not to look for objects and methods that should be tested
-
-    @property
-    def apps_to_check(self):
-        return [app for app in apps.get_app_configs() if app.name.startswith(tuple(self.CHECK_MODULES))]
 
     def get_tests_by_module(self, parent_module_names=[], submodule_name='tests'):
         # returns method names of test classes
@@ -38,50 +35,6 @@ class MissingTestMixin(object):
                           method.__name__.startswith('test_')}
 
         return tests
-
-    def get_module_class_methods(self, module):
-        # get classes defined in module, not imported
-        classes = self.get_module_classes(module)
-        methods = set()
-
-        for cls in classes:
-            methods |= {value for value in cls.__dict__.values() if callable(value)}
-
-        return methods
-
-    def get_module_classes(self, module):
-        return {m[1] for m in inspect.getmembers(module, inspect.isclass) if m[1].__module__ == module.__name__}
-
-    def get_module_functions(self, module):
-        return {m[1] for m in inspect.getmembers(module, inspect.isfunction) if m[1].__module__ == module.__name__}
-
-    def get_submodule_names(self, parent_module_names, submodule_names, exclude_names=[]):
-        # looks for submodules of parent_module containing submodule_name and not containing any of exclude_names,
-        # which are not package (files, not dirs)
-        module_names = set()
-
-        if isinstance(parent_module_names, str):
-            parent_module_names = [parent_module_names]
-
-        if isinstance(submodule_names, str):
-            submodule_names = [submodule_names]
-
-        if isinstance(exclude_names, str):
-            exclude_names = [exclude_names]
-
-        for parent_module_name in parent_module_names:
-            parent_module = sys.modules[parent_module_name]
-
-            for importer, modname, ispkg in pkgutil.walk_packages(path=parent_module.__path__,
-                                                                  prefix=parent_module.__name__ + '.',
-                                                                  onerror=lambda x: None):
-
-                for submodule_name in submodule_names:
-                    if submodule_name in modname and not ispkg:
-                        if not any([exclude_name in modname for exclude_name in exclude_names]):
-                            module_names.add(modname)
-
-        return (module_names)
 
     def test_for_missing_filters(self):
         module_names = self.get_submodule_names(self.CHECK_MODULES, 'filters', self.EXCLUDE_MODULES)
