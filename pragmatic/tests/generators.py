@@ -47,10 +47,23 @@ from taggit.forms import TagField
 
 
 class GenericTestMixin(object):
-    MODEL_FIELD_VALUES_MAP = {}
     USER_MODEL = User
-
     objs = OrderedDict()
+
+    @property
+    def model_field_values_map(self):
+        '''{
+            User: {
+                'my_user': {
+                    'username': lambda self: f'user.{GenericTestMixin.next_id(User)}@example.com',
+                    'email': lambda self: f'user.{GenericTestMixin.next_id(User)}@example.com',
+                    'password': 'testpassword',
+                    'is_superuser': True,
+                }
+            },
+        }
+        '''
+        return {}
 
     @property
     def user_model(self):
@@ -58,6 +71,67 @@ class GenericTestMixin(object):
             return get_user_model()
         except:
             return self.SER_MODEL
+
+    @property
+    def default_field_map(self):
+        # values can be callables with with field variable
+        return {
+            ForeignKey: lambda f: self.get_generated_obj(f.related_model),
+            OneToOneField: lambda f: self.get_generated_obj(f.related_model),
+            BooleanField: False,
+            TextField: lambda f: f'{f.model._meta.label_lower}_{f.name}',
+            CharField: lambda f: list(f.choices)[0][0] if f.choices else f'{f.model._meta.label_lower}_{f.name}'[
+                                                                         :f.max_length],
+            SlugField: lambda f: f'{f.name}_{self.next_id(f.model)}',
+            EmailField: lambda f: f'{f.model._meta.label_lower}.{self.next_id(f.model)}@example.com',
+            django_countries_fields.CountryField: 'LU',
+            CountryField: 'LU',
+            IBANField: 'LU28 0019 4006 4475 0000',
+            SWIFTBICField: 'BCEELULL',
+            gis_models.PointField: Point(0.1276, 51.5072),
+            VATNumberField: lambda f: f'LU{random.randint(10000000, 99999999)}',  # 'GB904447273',
+            DateTimeField: now(),
+            DateField: now().date(),
+            DateTimeRangeField: (now(), now() + timedelta(days=1)),
+            DateRangeField: (now().date(), now() + timedelta(days=1)),
+            FileField: self.get_pdf_file_mock(),
+            IntegerField: self.get_num_field_mock_value,
+            PositiveSmallIntegerField: self.get_num_field_mock_value,
+            DecimalField: self.get_num_field_mock_value,
+        }
+
+    @property
+    def default_form_field_map(self):
+        # values can be callables with with field variable
+        return {
+            django_form_fields.EmailField: lambda f: self.get_new_email(),
+            django_form_fields.CharField: lambda f: f'{f.label} {random.random()}'[:f.max_length],
+            django_form_fields.TypedChoiceField: lambda f: list(f.choices)[-1][0] if f.choices else f'{f.label}'[
+                                                                                                    :f.max_length],
+            django_form_fields.ChoiceField: lambda f: list(f.choices)[-1][0] if f.choices else f'{f.label}'[
+                                                                                               :f.max_length],
+            PhoneNumberField: '+420723270884',
+            PasswordField: self.TEST_PASSWORD,
+            SetPasswordField: self.TEST_PASSWORD,
+            CountryFormField: 'LU',  # random.choice(UN_RECOGNIZED_COUNTRIES),
+            django_countries_fields.LazyTypedChoiceField: 'LU',  # random.choice(UN_RECOGNIZED_COUNTRIES),
+            VATNumberFormField: lambda f: f'LU{random.randint(10000000, 99999999)}',  # 'GB904447273',
+            django_form_fields.URLField: 'www.example.com',
+            django_form_fields.ImageField: self.get_image_file_mock(),
+            django_form_fields.FileField: self.get_pdf_file_mock(),
+            django_form_fields.DateTimeField: now(),
+            django_form_fields.DateField: now().date(),
+            django_form_fields.IntegerField: lambda f: self.get_num_field_mock_value(f),
+            django_form_fields.DecimalField: lambda f: self.get_num_field_mock_value(f),
+            django_form_models.ModelMultipleChoiceField: lambda f: [f.queryset.first().id],
+            django_form_models.ModelChoiceField: lambda f: f.queryset.first().id,
+            django_form_fields.BooleanField: True,
+            IBANFormField: 'LU28 0019 4006 4475 0000',
+            TagField: lambda f: 'tag',
+            gis_forms.PointField: 'POINT (0.1276 51.5072)',
+            django_form_fields.DurationField: 1,
+            postgress_forms.SimpleArrayField: lambda f: [self.default_form_field_map[f.base_field.__class__](f.base_field)]
+        }
 
     def import_modules_if_needed(self):
         module_names = self.get_submodule_names(self.CHECK_MODULES, self.CHECK_MODULES, self.EXCLUDE_MODULES)
@@ -157,7 +231,6 @@ class GenericTestMixin(object):
         # so far only matching model names with kwargs names and assigning generated objects accordingly
         models = {model._meta.label_lower.split('.')[-1]: model for model in self.get_models()}
         result_kwargs = {}
-        print('GENERATE KWARGS', args, kwargs)
         try:
             for name, value in kwargs.items():
                 if name == 'email':
@@ -167,10 +240,6 @@ class GenericTestMixin(object):
 
                     if len(matching_models) == 1:
                         result_kwargs[name] = self.get_generated_obj(matching_models[0])
-                    else:
-                        print('MATCHING KWARGS', name, value)
-                        print(matching_models)
-                        pprint(models)
 
         except:
             raise
@@ -187,19 +256,13 @@ class GenericTestMixin(object):
 
                 if len(matching_models) == 1:
                     result_kwargs[arg] = self.get_generated_obj(matching_models[0])
-                else:
-                    print('MATCHING KWARGS', arg)
-                    print(matching_models)
-                    pprint(models)
 
-        print('GENRATED KWARGS', result_kwargs)
         return result_kwargs
 
     def generate_func_args(self, func):
         source = inspect.getsource(func)
         args = r'([^\)]*)'
         args = re.findall(f'def {func.__name__}\({args}\):', source)
-        print('GENERATE FUNC KWARGS', func.__name__, args)
         return self.generate_kwargs(*self.parse_args(args[0], eval_args=False, eval_kwargs=False))
 
     def generate_form_data(self, form, default_data):
@@ -417,7 +480,7 @@ class GenericTestMixin(object):
     def generate_model_objs(self, model):
         required_fields = self.get_models_fields(model, required_only=True)
         related_fields = self.get_models_fields(model, related_only=True)
-        model_obj_values_map = self.MODEL_FIELD_VALUES_MAP.get(model, {model._meta.label_lower.replace('.', '_'): {}})
+        model_obj_values_map = self.model_field_values_map.get(model, {model._meta.label_lower.replace('.', '_'): {}})
         new_objs = []
 
         for obj_name, obj_values in model_obj_values_map.items():
@@ -430,13 +493,7 @@ class GenericTestMixin(object):
                     obj=None
 
             if not obj:
-                field_values = {}
-
-                for field_name, field_value in obj_values.items():
-                    if callable(field_value):
-                        field_value = field_value(self)
-
-                    field_values[field_name] = field_value
+                field_values = obj_values(self) if callable(obj_values) else obj_values
 
                 for field in required_fields:
                     if field.name not in field_values:
@@ -488,65 +545,6 @@ class GenericTestMixin(object):
 
         return new_objs
 
-    @property
-    def default_field_map(self):
-        # values can be callables with with field variable
-        return {
-            ForeignKey: lambda f: self.get_generated_obj(f.related_model),
-            OneToOneField: lambda f: self.get_generated_obj(f.related_model),
-            BooleanField: False,
-            TextField: lambda f: f'{f.model._meta.label_lower}_{f.name}',
-            CharField: lambda f: list(f.choices)[0][0] if f.choices else f'{f.model._meta.label_lower}_{f.name}'[:f.max_length],
-            SlugField: lambda f: f'{f.name}_{self.next_id(f.model)}',
-            EmailField: lambda f: f'{f.model._meta.label_lower}.{self.next_id(f.model)}@example.com',
-            django_countries_fields.CountryField: 'LU',
-            CountryField: 'LU',
-            IBANField: 'LU28 0019 4006 4475 0000',
-            SWIFTBICField: 'BCEELULL',
-            gis_models.PointField: Point(0.1276, 51.5072),
-            VATNumberField: lambda f: f'LU{random.randint(10000000, 99999999)}', #'GB904447273',
-            DateTimeField: now(),
-            DateField: now().date(),
-            DateTimeRangeField: (now(), now() + timedelta(days=1)),
-            DateRangeField: (now().date(), now() + timedelta(days=1)),
-            FileField: self.get_pdf_file_mock(),
-            IntegerField: self.get_num_field_mock_value,
-            PositiveSmallIntegerField: self.get_num_field_mock_value,
-            DecimalField: self.get_num_field_mock_value,
-        }
-
-    @property
-    def default_form_field_map(self):
-        # values can be callables with with field variable
-        return {
-            django_form_fields.EmailField: lambda f: self.get_new_email(),
-            django_form_fields.CharField: lambda f: f'{f.label} {random.random()}'[:f.max_length],
-            django_form_fields.TypedChoiceField: lambda f: list(f.choices)[-1][0] if f.choices else f'{f.label}'[
-                                                                                                    :f.max_length],
-            django_form_fields.ChoiceField: lambda f: list(f.choices)[-1][0] if f.choices else f'{f.label}'[
-                                                                                               :f.max_length],
-            PhoneNumberField: '+420723270884',
-            PasswordField: self.TEST_PASSWORD,
-            SetPasswordField: self.TEST_PASSWORD,
-            CountryFormField: 'LU', #random.choice(UN_RECOGNIZED_COUNTRIES),
-            django_countries_fields.LazyTypedChoiceField: 'LU', #random.choice(UN_RECOGNIZED_COUNTRIES),
-            VATNumberFormField: lambda f: f'LU{random.randint(10000000, 99999999)}', #'GB904447273',
-            django_form_fields.URLField: 'www.example.com',
-            django_form_fields.ImageField: self.get_image_file_mock(),
-            django_form_fields.FileField: self.get_pdf_file_mock(),
-            django_form_fields.DateTimeField: now(),
-            django_form_fields.DateField: now().date(),
-            django_form_fields.IntegerField: lambda f: self.get_num_field_mock_value(f),
-            django_form_fields.DecimalField: lambda f: self.get_num_field_mock_value(f),
-            django_form_models.ModelMultipleChoiceField: lambda f: [f.queryset.first().id],
-            django_form_models.ModelChoiceField: lambda f: f.queryset.first().id,
-            django_form_fields.BooleanField: True,
-            IBANFormField: 'LU28 0019 4006 4475 0000',
-            TagField: lambda f: 'tag',
-            gis_forms.PointField: 'POINT (0.1276 51.5072)',
-            django_form_fields.DurationField: 1,
-            postgress_forms.SimpleArrayField: lambda f: [self.default_form_field_map[f.base_field.__class__](f.base_field)]
-        }
 
     def get_generated_obj(self, model):
         obj_name = None
@@ -554,8 +552,8 @@ class GenericTestMixin(object):
         if model._meta.proxy:
             model = model._meta.concrete_model
 
-        if model in self.MODEL_FIELD_VALUES_MAP:
-            obj_name = list(self.MODEL_FIELD_VALUES_MAP[model].keys())[0]
+        if model in self.model_field_values_map.keys():
+            obj_name = list(self.model_field_values_map[model].keys())[0]
 
         if obj_name not in self.objs:
             obj_name = model._meta.label_lower.replace('.', '_')
@@ -627,40 +625,44 @@ class GenericTestMixin(object):
 
 
 class GenericTestCase(GenericTestMixin, TestCase):
-    '''
-    Examples of necessary variables, value can be lambda with self argument
-
-    MODEL_FIELD_VALUE_MAP = {
-        User: {
-            'my_user': {
-                'username': lambda self: f'user.{GenericTestMixin.next_id(User)}@example.com',
-                'email': lambda self: f'user.{GenericTestMixin.next_id(User)}@example.com',
-                'password': 'testpassword',
-                'is_superuser': True,
-            }
-        },
-    }
-
-    URLS_PARAMS_MAP = {
-        'accounts:user_list':{
-            'params_1: {
-                'args': [],
-                'kwargs': {},
-                'data': {},
-                'form_kwargs': {},
-            },
-            'params_2': {} # passing empty dict behaves as if no params were specified, use to check also default behaviour besides specified params (params_1)
-    }
-
-    IGNORE_URL_NAMES_CONTAINING = [
+    '''IGNORE_URL_NAMES_CONTAINING = [
         'select2',
     ]
     '''
-
-    URLS_PARAMS_MAP = {}
-    QUERYSETS_PARAMS_MAP = {}
     IGNORE_URL_NAMES_CONTAINING = []
     TEST_PASSWORD = 'testpassword'
+
+    @property
+    def url_params_map(self):
+        '''{
+            'accounts:user_list':{
+                'params_1: {
+                    'args': [],
+                    'kwargs': {},
+                    'data': {},
+                    'form_kwargs': {},
+                },
+                'params_2': {} # passing empty dict behaves as if no params were specified, use to check also default behaviour besides specified params (params_1)
+        }
+        '''
+        return {}
+
+    @property
+    def queryset_params_map(self):
+        '''{
+            'UserQuerySet: {
+                'restrict_user': {},
+            },
+        }
+        '''
+        return {}
+
+    def init_form_kwargs(self, form_class):
+        '''{
+            UserForm: {'user': self.get_generated_obj(User)},
+        }
+        '''
+        return {}.get(form_class, self.generate_func_args(form_class.__init__))
 
     def setUp(self):
         super().setUp()
@@ -674,21 +676,29 @@ class GenericTestCase(GenericTestMixin, TestCase):
         self.assertTrue(logged_in)
         self.user = user
 
+    def tearDown(self):
+        self.delete_ojbs()
+        super().tearDown()
+
     def test_urls(self):
         models = self.get_models()
         fields = [(f, model) for model in models for f in model._meta.get_fields() if f.concrete and not f.auto_created]
         failed_urls = []
-        failed_forms = []
 
         for module_name, module_params in self.get_url_views_by_module().items():
             for path_params in module_params:
-                print(path_params)
                 path_namespace, path_name = path_params['path_name'].split(':')
                 namespaces = [namespace for namespace, namespace_path_names in self.get_url_namespace_map().items() if
                               namespace.endswith(path_namespace) and path_name in namespace_path_names]
 
                 if len(namespaces) > 1:
-                    failed_urls.append(f'Cant resolve namespace for path {path_params["path_name"]} in {module_name}')
+                    failed_urls.append(OrderedDict({
+                        'location': 'NAMESPACE',
+                        'url name': path_params["path_name"],
+                        'module': module_name,
+                        'matching namespaces': namespaces,
+                        'traceback': 'Namespace matching failed'
+                    }))
                     continue
 
                 path_name = f'{namespaces[0]}:{path_name}'
@@ -698,13 +708,10 @@ class GenericTestCase(GenericTestMixin, TestCase):
 
                 url_pattern = path_params["url_pattern"]
                 args = re.findall(r'<([:\w]+)>', url_pattern)
-                print(path_name)
-                params_maps = self.URLS_PARAMS_MAP.get(path_name, {'default': {}})
+                params_maps = self.url_params_map.get(path_name, {'default': {}})
+
                 for map_name, params_map in params_maps.items():
-                    print('PARAMS MAP NAME', map_name)
-                    parsed_args = list(map(lambda x: x() if callable(x) else x, params_map.get('args', [])))
-                    print(parsed_args)
-                    # parsed_args = map(lambda x: x() if callable(x) else x, params_map.get('args', []))
+                    parsed_args = params_map.get('args', [])
                     view_class = path_params['view_class']
 
                     if args and not parsed_args:
@@ -728,8 +735,14 @@ class GenericTestCase(GenericTestMixin, TestCase):
                                 type, name = arg.split(':') if ':' in arg else ('int', arg)
 
                                 if type not in ['int', 'str']:
-                                    failed_urls.append(
-                                        f'Unknown url arg type {type} in in {url_pattern} of path {path_name} in {module_name}')
+                                    failed_urls.append(OrderedDict({
+                                        'location': 'URL ARG TYPE',
+                                        'url name': path_name,
+                                        'url': path,
+                                        'url pattern': url_pattern,
+                                        'arg': arg,
+                                        'traceback': 'Cant handle this arg type'
+                                    }))
                                     continue
 
                                 if name.endswith('_pk'):
@@ -741,7 +754,6 @@ class GenericTestCase(GenericTestMixin, TestCase):
                                                        field.name == name and isinstance(field,
                                                                                          IntegerField if type == 'int' else CharField)]
 
-                                    print('matching', matching_fields)
                                     if len(matching_fields) > 1:
                                         # match field  model
                                         matching_fields = [(field, model) for field, model in matching_fields if
@@ -760,8 +772,15 @@ class GenericTestCase(GenericTestMixin, TestCase):
                                                                property[0].startswith(name)]
 
                             if len(matching_fields) != 1:
-                                failed_urls.append(
-                                    f'Cant match url arg {arg} in {url_pattern} of path {path_name} in {module_name}')
+                                failed_urls.append(OrderedDict({
+                                    'location': 'URL ARG MATCH',
+                                    'url name': path_name,
+                                    'url': path,
+                                    'url pattern': url_pattern,
+                                    'arg': arg,
+                                    'matching fields': matching_fields,
+                                    'traceback': 'Url arg mathcing failed'
+                                }))
                                 continue
 
                             attr_name, model = matching_fields[0]
@@ -779,8 +798,15 @@ class GenericTestCase(GenericTestMixin, TestCase):
                             arg_value = getattr(obj, attr_name, None)
 
                             if arg_value is None:
-                                failed_urls.append(
-                                    f'Parsing url arg {arg} in {url_pattern} of path {path_name} in {module_name} FAILED')
+                                failed_urls.append(OrderedDict({
+                                    'location': 'URL ARG PARSE',
+                                    'url name': path_name,
+                                    'url': path,
+                                    'url pattern': url_pattern,
+                                    'arg': arg,
+                                    'parsed arg': arg_value,
+                                    'traceback': 'Url arg parsing failed'
+                                }))
                                 continue
 
                             parsed_args.append(arg_value)
@@ -802,9 +828,6 @@ class GenericTestCase(GenericTestMixin, TestCase):
                             'parsed args': parsed_args,
                             'traceback': traceback.format_exc()
                         }))
-
-                        # print(failed_urls[-1])
-                        # raise
                     else:
                         if hasattr(view_class, 'sorting_options'):  # and isinstance(view_class.sorting_options, dict):
                             for sorting, label in view_class.sorting_options.items():
@@ -864,20 +887,16 @@ class GenericTestCase(GenericTestMixin, TestCase):
                         # POST url
                         if getattr(view_class, 'form_class', None):
                             form_class = view_class.form_class
-                            print('PARAMS MAP', params_map)
                             form_kwargs = params_map.get('form_kwargs', self.generate_func_args(form_class.__init__))
                             form_kwargs = {key: value(self) if callable(value) else value for key,value in form_kwargs.items()}
                             form_kwargs['data'] = data
-
                             init_form_kwargs = self.init_form_kwargs(form_class)
-
                             form = None
 
                             try:
                                 form = form_class(**init_form_kwargs)
                             except Exception as e:
                                 if not isinstance(form, form_class) or not hasattr(form, 'fields'):
-                                    print(form.__class__, form_class)
                                     # as long as there is form instance with fields its enough to generate data
                                     raise
 
@@ -905,8 +924,6 @@ class GenericTestCase(GenericTestMixin, TestCase):
                                     'data': form_kwargs['data'],
                                     'traceback': traceback.format_exc()
                                 }))
-                                pprint(failed_urls[-1])
-                                raise
                             else:
                                 if issubclass(view_class, (CreateView, UpdateView, DeleteView)):
                                     obj_count_after = view_class.model.objects.all().count()
@@ -943,7 +960,6 @@ class GenericTestCase(GenericTestMixin, TestCase):
                                             'data': form_kwargs['data'],
                                             'traceback': traceback.format_exc()
                                         }))
-                                        print(failed_urls[-1])
 
         if failed_urls:
             # append failed count at the end of error list
@@ -965,7 +981,7 @@ class GenericTestCase(GenericTestMixin, TestCase):
                                     and name != 'mro'
                                     and inspect.isfunction(func)]
 
-                params_map = self.QUERYSETS_PARAMS_MAP.get(qs_class, {})
+                params_map = self.queryset_params_map.get(qs_class, {})
 
                 for name, func in queryset_methods:
                     result = None
@@ -984,7 +1000,6 @@ class GenericTestCase(GenericTestMixin, TestCase):
 
                     elif name in params_map:
                         kwargs = params_map[name]
-                        kwargs = {key: (value(self) if callable(value) else value) for key, value in kwargs.items()}
 
                         try:
                             result = getattr(qs, name)(**kwargs)
