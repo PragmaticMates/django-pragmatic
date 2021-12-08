@@ -70,7 +70,7 @@ class GenericTestMixin(object):
         try:
             return get_user_model()
         except:
-            return self.SER_MODEL
+            return self.USER_MODEL
 
     @property
     def default_field_map(self):
