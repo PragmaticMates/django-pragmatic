@@ -105,10 +105,9 @@ class GenericTestMixin(object):
         return {
             django_form_fields.EmailField: lambda f: self.get_new_email(),
             django_form_fields.CharField: lambda f: f'{f.label} {random.random()}'[:f.max_length],
-            django_form_fields.TypedChoiceField: lambda f: list(f.choices)[-1][0] if f.choices else f'{f.label}'[
-                                                                                                    :f.max_length],
-            django_form_fields.ChoiceField: lambda f: list(f.choices)[-1][0] if f.choices else f'{f.label}'[
-                                                                                               :f.max_length],
+            django_form_fields.TypedChoiceField: lambda f: list(f.choices)[-1][0],
+            django_form_fields.ChoiceField: lambda f: list(f.choices)[-1][0],
+            django_form_fields.MultipleChoiceField: lambda f: [list(f.choices)[-1][0]],
             PasswordField: self.TEST_PASSWORD,
             SetPasswordField: self.TEST_PASSWORD,
             CountryFormField: 'LU',  # random.choice(UN_RECOGNIZED_COUNTRIES),

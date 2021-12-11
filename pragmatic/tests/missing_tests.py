@@ -1,11 +1,10 @@
 import importlib
 import inspect
-import pkgutil
 import re
 import sys
+from pprint import pformat
 
 import django_filters
-from django.apps import apps
 
 from pragmatic.tests.generators import GenericTestMixin
 
@@ -39,6 +38,7 @@ class MissingTestMixin(GenericTestMixin):
     def test_for_missing_filters(self):
         module_names = self.get_submodule_names(self.CHECK_MODULES, 'filters', self.EXCLUDE_MODULES)
         filter_classes = set()
+        failed = []
 
         # get filter classes
         for module_name in module_names:
@@ -78,13 +78,18 @@ class MissingTestMixin(GenericTestMixin):
 
         for cls in filter_classes:
             # test filter class test existence
-            self.assertTrue(cls.__name__ in tested_class_names, f'{cls.__module__}.{cls.__name__} test missing')
+            if not cls.__name__ in tested_class_names:
+                failed.append(f'{cls.__module__}.{cls.__name__} test missing')
 
             # test filter class methods tests existence
             if issubclass(cls, django_filters.FilterSet):
                 filter_methods_names = {f'{cls.__name__}.{key}' for key, value in cls.__dict__.items() if callable(value) and key.startswith('filter')}
                 not_tested_methods = filter_methods_names - tested_method_names
-                self.assertEqual(not_tested_methods, set(), f'missing tests for {not_tested_methods}')
+
+                if not_tested_methods != set():
+                    failed.append(not_tested_methods)
+
+        self.assertTrue(len(failed)==0, msg=pformat(failed, indent=4))
 
     def test_for_missing_managers(self):
         module_names = self.get_submodule_names(self.CHECK_MODULES, ['managers', 'querysets'], self.EXCLUDE_MODULES)
