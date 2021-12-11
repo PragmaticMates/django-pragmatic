@@ -42,7 +42,6 @@ from django_iban.fields import IBANField, IBANFormField, SWIFTBICField
 from internationalflavor.countries import CountryField, CountryFormField
 from internationalflavor.countries.data import UN_RECOGNIZED_COUNTRIES
 from internationalflavor.vat_number import VATNumberField, VATNumberFormField
-from phonenumber_field.formfields import PhoneNumberField
 from taggit.forms import TagField
 
 
@@ -108,9 +107,8 @@ class GenericTestMixin(object):
             django_form_fields.CharField: lambda f: f'{f.label} {random.random()}'[:f.max_length],
             django_form_fields.TypedChoiceField: lambda f: list(f.choices)[-1][0] if f.choices else f'{f.label}'[
                                                                                                     :f.max_length],
-            django_form_fields.ChoiceField: lambda f: list(f.choices)[-1][0] if f.choices else f'{f.label}'[:f.max_length],
-            django_form_fields.MultipleChoiceField: lambda f: [list(f.choices)[-1][0]] if f.choices else [f'{f.label}'[:f.max_length]],
-            PhoneNumberField: '+420723270884',
+            django_form_fields.ChoiceField: lambda f: list(f.choices)[-1][0] if f.choices else f'{f.label}'[
+                                                                                               :f.max_length],
             PasswordField: self.TEST_PASSWORD,
             SetPasswordField: self.TEST_PASSWORD,
             CountryFormField: 'LU',  # random.choice(UN_RECOGNIZED_COUNTRIES),
@@ -683,7 +681,7 @@ class GenericTestCase(GenericTestMixin, TestCase):
     def test_urls(self):
         models = self.get_models()
         fields = [(f, model) for model in models for f in model._meta.get_fields() if f.concrete and not f.auto_created]
-        failed_urls = []
+        failed = []
 
         for module_name, module_params in self.get_url_views_by_module().items():
             for path_params in module_params:
@@ -692,7 +690,7 @@ class GenericTestCase(GenericTestMixin, TestCase):
                               namespace.endswith(path_namespace) and path_name in namespace_path_names]
 
                 if len(namespaces) > 1:
-                    failed_urls.append(OrderedDict({
+                    failed.append(OrderedDict({
                         'location': 'NAMESPACE',
                         'url name': path_params["path_name"],
                         'module': module_name,
@@ -735,7 +733,7 @@ class GenericTestCase(GenericTestMixin, TestCase):
                                 type, name = arg.split(':') if ':' in arg else ('int', arg)
 
                                 if type not in ['int', 'str']:
-                                    failed_urls.append(OrderedDict({
+                                    failed.append(OrderedDict({
                                         'location': 'URL ARG TYPE',
                                         'url name': path_name,
                                         'url': path,
@@ -772,7 +770,7 @@ class GenericTestCase(GenericTestMixin, TestCase):
                                                                property[0].startswith(name)]
 
                             if len(matching_fields) != 1:
-                                failed_urls.append(OrderedDict({
+                                failed.append(OrderedDict({
                                     'location': 'URL ARG MATCH',
                                     'url name': path_name,
                                     'url': path,
@@ -798,7 +796,7 @@ class GenericTestCase(GenericTestMixin, TestCase):
                             arg_value = getattr(obj, attr_name, None)
 
                             if arg_value is None:
-                                failed_urls.append(OrderedDict({
+                                failed.append(OrderedDict({
                                     'location': 'URL ARG PARSE',
                                     'url name': path_name,
                                     'url': path,
@@ -820,7 +818,7 @@ class GenericTestCase(GenericTestMixin, TestCase):
                         response = self.client.get(path=path, data=data, follow=True)
                         self.assertEqual(response.status_code, 200)
                     except Exception as e:
-                        failed_urls.append(OrderedDict({
+                        failed.append(OrderedDict({
                             'location': 'GET',
                             'url name': path_name,
                             'url': path,
@@ -837,7 +835,7 @@ class GenericTestCase(GenericTestMixin, TestCase):
                                     response = self.client.get(path=path, data=data, follow=True)
                                     self.assertEqual(response.status_code, 200)
                                 except Exception as e:
-                                    failed_urls.append(OrderedDict({
+                                    failed.append(OrderedDict({
                                         'location': 'SORTING',
                                         'url name': path_name,
                                         'url': path,
@@ -856,7 +854,7 @@ class GenericTestCase(GenericTestMixin, TestCase):
                                     response = self.client.get(path=path, data=data, follow=True)
                                     self.assertEqual(response.status_code, 200)
                                 except Exception as e:
-                                    failed_urls.append(OrderedDict({
+                                    failed.append(OrderedDict({
                                         'location': 'DISPLAY',
                                         'url name': path_name,
                                         'url': path,
@@ -873,7 +871,7 @@ class GenericTestCase(GenericTestMixin, TestCase):
                                         try:
                                             self.assertTrue(template.endswith(f'{display}.html'))
                                         except Exception as e:
-                                            failed_urls.append(OrderedDict({
+                                            failed.append(OrderedDict({
                                                 'location': 'TEMPLATE',
                                                 'url name': path_name,
                                                 'url': path,
@@ -914,7 +912,7 @@ class GenericTestCase(GenericTestMixin, TestCase):
                                 self.assertEqual(response.status_code, 200)
 
                             except Exception as e:
-                                failed_urls.append(OrderedDict({
+                                failed.append(OrderedDict({
                                     'location': 'POST',
                                     'url name': path_name,
                                     'url': path,
@@ -948,7 +946,7 @@ class GenericTestCase(GenericTestMixin, TestCase):
 
                                         form = form_class(**form_kwargs)
 
-                                        failed_urls.append(OrderedDict({
+                                        failed.append(OrderedDict({
                                             'location': 'POST COUNT',
                                             'url name': path_name,
                                             'url': path,
@@ -961,11 +959,11 @@ class GenericTestCase(GenericTestMixin, TestCase):
                                             'traceback': traceback.format_exc()
                                         }))
 
-        if failed_urls:
+        if failed:
             # append failed count at the end of error list
-            failed_urls.append(f'{len(failed_urls)} urls FAILED')
+            failed.append(f'{len(failed)} urls FAILED')
 
-        self.assertFalse(failed_urls, msg=pformat(failed_urls, indent=4))
+        self.assertFalse(failed, msg=pformat(failed, indent=4))
 
     def test_querysets(self):
         models_querysets = [model.objects.all() for model in self.get_models()]
@@ -1016,11 +1014,9 @@ class GenericTestCase(GenericTestMixin, TestCase):
                         try:
                             result = getattr(qs, name)(**kwargs)
                         except Exception as e:
-                            failed.append([f'{qs_class_label}.{name}({args[0]})', f'Failed to generate kwargs {kwargs}',
-                                           traceback.format_exc()])
                             failed.append([{
                                 'location': 'GENERATED KWARGS',
-                                'queryset method': f'{qs_class_label}.{name}({args[0]})',
+                                'queryset method': f'{qs_class_label}.{name}',
                                 'kwargs': kwargs,
                                 'traceback': traceback.format_exc(),
                             }])
