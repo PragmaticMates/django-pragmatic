@@ -89,7 +89,11 @@ class MissingTestMixin(GenericTestMixin):
                 if not_tested_methods != set():
                     failed.append(not_tested_methods)
 
-        self.assertTrue(len(failed)==0, msg=pformat(failed, indent=4))
+        if failed:
+            # append failed count at the end of error list
+            failed.append(f'{len(failed)} filter tests missing')
+
+        self.assertEqual(len(failed), 0, msg=pformat(failed, indent=4))
 
     def test_for_missing_managers(self):
         module_names = self.get_submodule_names(self.CHECK_MODULES, ['managers', 'querysets'], self.EXCLUDE_MODULES)
@@ -275,24 +279,34 @@ class MissingTestMixin(GenericTestMixin):
             if not any([exclude_name in path for exclude_name in self.EXCLUDE_MODULES]):
                 tested_permissions[permission_name][path].append(test.__name__)
 
+        failed = []
+
         for permission_name, locations in explicit_permissions.items():
             for path, lines in locations.items():
-                self.assertEqual(
-                    len(lines),
-                    len(tested_permissions[permission_name][path]),
-                    f'Missing test for permission "{permission_name}" in "{path}", lines {lines}. \n Tests found: {sorted(tested_permissions[permission_name])}'
-                )
+                if len(lines) != len(tested_permissions[permission_name][path]):
+                    failed.append({
+                        'permission': permission_name,
+                        'path': path,
+                        'lines': lines,
+                        'tests found': tested_permissions[permission_name]
+                    })
 
                 del tested_permissions[permission_name][path]
 
         surplus_tests = []
         for tests in tested_permissions[permission_name].values():
             surplus_tests.extend(tests)
-            self.assertEqual(
-                surplus_tests,
-                [],
-                f'Surplus tests found: {surplus_tests}'
-            )
+
+        if surplus_tests:
+            failed.append({
+                'surplus tests': surplus_tests
+            })
+
+        if failed:
+            # append failed count at the end of error list
+            failed.append(f'{len(failed)} permission tests missing')
+
+        self.assertEqual(len(failed), 0, msg=pformat(failed, indent=4))
 
     def get_explicit_permissions_by_module(self, parent_module_names, submodule_names, exclude):
         module_names = self.get_submodule_names(parent_module_names, submodule_names, exclude)
