@@ -37,13 +37,13 @@ from django.test import TestCase, RequestFactory
 from django.urls import reverse
 from django.utils.timezone import now
 from django.views.generic import CreateView, UpdateView, DeleteView
-import django_countries.fields as django_countries_fields
-from django_iban.fields import IBANField, IBANFormField, SWIFTBICField
+# import django_countries.fields as django_countries_fields
+# from django_iban.fields import IBANField, IBANFormField, SWIFTBICField
 from internationalflavor.countries import CountryField, CountryFormField
 from internationalflavor.countries.data import UN_RECOGNIZED_COUNTRIES
 from internationalflavor.vat_number import VATNumberField, VATNumberFormField
-from phonenumber_field.formfields import PhoneNumberField
-from taggit.forms import TagField
+# from phonenumber_field.formfields import PhoneNumberField
+# from taggit.forms import TagField
 
 
 class GenericTestMixin(object):
@@ -83,10 +83,10 @@ class GenericTestMixin(object):
             CharField: lambda f: list(f.choices)[0][0] if f.choices else '{}_{}'.format(f.model._meta.label_lower, f.name)[:f.max_length],
             SlugField: lambda f: '{}_{}'.format(f.name, self.next_id(f.model)),
             EmailField: lambda f: '{}.{}@example.com'.format(f.model._meta.label_lower, self.next_id(f.model)),
-            django_countries_fields.CountryField: 'LU',
+            # django_countries_fields.CountryField: 'LU',
             CountryField: 'LU',
-            IBANField: 'LU28 0019 4006 4475 0000',
-            SWIFTBICField: 'BCEELULL',
+            # IBANField: 'LU28 0019 4006 4475 0000',
+            # SWIFTBICField: 'BCEELULL',
             gis_models.PointField: Point(0.1276, 51.5072),
             VATNumberField: lambda f: 'LU{}'.format(random.randint(10000000, 99999999)),  # 'GB904447273',
             DateTimeField: now(),
@@ -107,11 +107,11 @@ class GenericTestMixin(object):
             django_form_fields.CharField: lambda f: '{} {}'.format(f.label, random.randint(1, 999))[:f.max_length],
             django_form_fields.TypedChoiceField: lambda f: list(f.choices)[-1][0] if f.choices else '{}'.format(f.label)[:f.max_length],
             django_form_fields.ChoiceField: lambda f: list(f.choices)[-1][0] if f.choices else '{}'.format(f.label)[:f.max_length],
-            PhoneNumberField: '+420723270884',
+            # PhoneNumberField: '+420723270884',
             # PasswordField: self.TEST_PASSWORD,
             # SetPasswordField: self.TEST_PASSWORD,
             CountryFormField: 'LU',  # random.choice(UN_RECOGNIZED_COUNTRIES),
-            django_countries_fields.LazyTypedChoiceField: 'LU',  # random.choice(UN_RECOGNIZED_COUNTRIES),
+            # django_countries_fields.LazyTypedChoiceField: 'LU',  # random.choice(UN_RECOGNIZED_COUNTRIES),
             VATNumberFormField: lambda f: 'LU{}'.format(random.randint(10000000, 99999999)),  # 'GB904447273',
             django_form_fields.URLField: 'www.example.com',
             django_form_fields.ImageField: self.get_image_file_mock(),
@@ -123,8 +123,8 @@ class GenericTestMixin(object):
             django_form_models.ModelMultipleChoiceField: lambda f: [f.queryset.first().id],
             django_form_models.ModelChoiceField: lambda f: f.queryset.first().id,
             django_form_fields.BooleanField: True,
-            IBANFormField: 'LU28 0019 4006 4475 0000',
-            TagField: lambda f: 'tag',
+            # IBANFormField: 'LU28 0019 4006 4475 0000',
+            # TagField: lambda f: 'tag',
             gis_forms.PointField: 'POINT (0.1276 51.5072)',
             django_form_fields.DurationField: 1,
             postgress_forms.SimpleArrayField: lambda f: [self.default_form_field_map[f.base_field.__class__](f.base_field)]
@@ -662,7 +662,7 @@ class GenericTestCase(GenericTestMixin, TestCase):
         return {}.get(form_class, self.generate_func_args(form_class.__init__))
 
     def setUp(self):
-        super().setUp()
+        super(GenericTestCase, self).setUp()
         self.generate_objs()
         user = self.get_generated_obj(self.user_model)
         user.is_superuser = True
@@ -675,7 +675,7 @@ class GenericTestCase(GenericTestMixin, TestCase):
 
     def tearDown(self):
         self.delete_ojbs()
-        super().tearDown()
+        super(GenericTestCase, self).tearDown()
 
     def test_urls(self):
         models = self.get_models()
