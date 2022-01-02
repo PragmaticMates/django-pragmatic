@@ -774,7 +774,7 @@ class GenericTestCase(GenericTestMixin, TestCase):
                 tested = []
                 for module_name, module_params in self.get_url_views_by_module().items():
                     for path_params in module_params:
-                        # print(path_params)
+                        print(path_params)
                         path_namespace, path_name = path_params['path_name'].split(':')
                         namespaces = [namespace for namespace, namespace_path_names in self.get_url_namespace_map().items() if
                                       namespace.endswith(path_namespace) and path_name in namespace_path_names]
@@ -1170,18 +1170,18 @@ class GenericTestCase(GenericTestMixin, TestCase):
 
                 self.assertFalse(failed, msg=pformat(failed, indent=4))
         except:
-            # if not raise_every_time:
-            #     for i, f in enumerate(reversed(failed)):
-            #         print('\n')
-            #         print(i)
-            #         if isinstance(f, (OrderedDict, dict)):
-            #             for k, v in f.items():
-            #                 print(k)
-            #                 print(v)
-            #         else:
-            #             print(f)
-            #     if failed:
-            #         print(failed[-1])
+            if not raise_every_time:
+                for i, f in enumerate(reversed(failed)):
+                    print('\n')
+                    print(i)
+                    if isinstance(f, (OrderedDict, dict)):
+                        for k, v in f.items():
+                            print(k)
+                            print(v)
+                    else:
+                        print(f)
+                if failed:
+                    print(failed[-1])
             raise
 
     def test_querysets(self):
@@ -1204,6 +1204,7 @@ class GenericTestCase(GenericTestMixin, TestCase):
                         params_map = self.queryset_params_map().get(qs_class, {})
 
                         for name, func in queryset_methods:
+                            print('{}.{}'.format(qs_class_label, name))
                             result = None
                             kwargs = {}
 
