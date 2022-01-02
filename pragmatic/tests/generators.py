@@ -1063,12 +1063,7 @@ class GenericTestCase(GenericTestMixin, TestCase):
                                         'default form data': data,
                                         'traceback': traceback.format_exc()
                                     }))
-                                    from archivis.core.protocols.models import OrderProtocol, DisposalProposalProtocol, \
-                                        AcceptanceProtocol, UnitBoxPair, \
-                                        SADisposalProposalProtocol, StateArchiveProtocol, ReturningProtocol, \
-                                        ShreddingProtocol
 
-                                    # raise
                                     if raise_every_time:
                                         self.print_last_fail(failed)
                                         raise
