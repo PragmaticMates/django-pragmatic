@@ -1,10 +1,11 @@
 #!/usr/bin/env python
 from setuptools import setup
 
+from pragmatic import VERSION
 
 setup(
     name='django-pragmatic',
-    version='4.1.0',
+    version=VERSION,
     description='Pragmatic tools and utilities for Django projects',
     long_description=open('README.rst').read(),
     author='Pragmatic Mates',
