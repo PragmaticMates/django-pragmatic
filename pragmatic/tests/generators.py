@@ -33,6 +33,7 @@ from django.db.models import NOT_PROVIDED, BooleanField, TextField, CharField, S
     DateField, FileField, PositiveSmallIntegerField, DecimalField, IntegerField, QuerySet, PositiveIntegerField, \
     SmallIntegerField, BigIntegerField, FloatField, ImageField, GenericIPAddressField
 from django.db.models.fields.related import RelatedField, ManyToManyField, ForeignKey, OneToOneField
+from django_filters import fields as django_filter_fields, FilterSet
 from django.forms import fields as django_form_fields
 from django.forms import models as django_form_models
 from django.http import QueryDict
@@ -133,6 +134,9 @@ class GenericTestMixin(object):
             django_form_models.ModelMultipleChoiceField: lambda f: [f.queryset.first().id],
             django_form_models.ModelChoiceField: lambda f: f.queryset.first().id,
             django_form_fields.BooleanField: True,
+            django_filter_fields.ModelChoiceField: lambda f: f.queryset.first().id,
+            django_filter_fields.ChoiceField: lambda f: list(f.choices)[-1][0],
+            django_form_fields.NullBooleanField: True,
             # IBANFormField: 'LU28 0019 4006 4475 0000',
             # TagField: lambda f: 'tag',
             gis_forms.PointField: 'POINT (0.1276 51.5072)',
