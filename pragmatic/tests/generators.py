@@ -738,12 +738,27 @@ class GenericTestCase(GenericTestMixin, TestCase):
         '''
         return {}
 
+    @property
+    def filter_params_map(self):
+        '''{
+            'UserFilterSet: {
+                'init_kwargs': {},
+                'data': {},
+                'queryset': User.objects.all(), # optional
+            },
+        }
+        '''
+        return {}
+
     def init_form_kwargs(self, form_class, default={}):
         '''{
             UserForm: {'user': self.get_generated_obj(User)},
         }
         '''
         return {}.get(form_class, self.generate_func_args(form_class.__init__, default))
+
+    def init_filter_kwargs(self, filter_class, default={}):
+        return self.generate_func_args(filter_class.__init__, default=default)
 
     def setUp(self):
         super(GenericTestCase, self).setUp()
@@ -1260,3 +1275,71 @@ class GenericTestCase(GenericTestMixin, TestCase):
         except:
             # raise Exception(pformat(failed, indent=4))
             raise
+
+    def test_filters(self):
+        raise_every_time = self.RAISE_EVERY_TIME
+
+        module_names = self.get_submodule_names(self.CHECK_MODULES, ['filters', 'forms'], self.EXCLUDE_MODULES)
+        filter_classes = set()
+        failed = []
+
+        # get filter classes
+        for module_name in module_names:
+            module = sys.modules[module_name]
+            filter_classes |= {
+                cls for cls in self.get_module_classes(module) if issubclass(cls, (FilterSet,))
+            }
+
+        filter_classes = sorted(filter_classes, key=lambda x: x.__name__)
+
+        for i, filter_class in enumerate(filter_classes):
+            params_map = self.filter_params_map.get(filter_class, {})
+            init_kwargs = self.init_filter_kwargs(filter_class, default=params_map.get('init_kwargs', {}))
+            filter = filter_class(**init_kwargs)
+            query_dict_data = QueryDict('', mutable=True)
+
+            try:
+                query_dict_data.update(self.generate_form_data(filter.form, params_map.get('data', {})))
+            except:
+                failed.append(OrderedDict({
+                    'location': 'FILTER DATA',
+                    'filter class': filter_class,
+                    'data': query_dict_data,
+                    'params map': params_map,
+                    'traceback': traceback.format_exc()
+                }))
+                if raise_every_time:
+                    self.print_last_fail(failed)
+                    raise
+                continue
+
+            try:
+                queryset = params_map.get('queryset', filter_class._meta.model.objects.all())
+            except Exception as e:
+                failed.append(OrderedDict({
+                    'location': 'FILTER QUERYSET',
+                    'filter class': filter_class,
+                    'params map': params_map,
+                    'traceback': traceback.format_exc()
+                }))
+                if raise_every_time:
+                    self.print_last_fail(failed)
+                    raise
+                continue
+
+            try:
+                filter = filter_class(data=query_dict_data, queryset=queryset, **init_kwargs)
+                qs = filter.qs.all().values()
+            except Exception as e:
+                failed.append(OrderedDict({
+                    'location': 'FILTER',
+                    'filter class': filter_class,
+                    'data': query_dict_data,
+                    'params map': params_map,
+                    'traceback': traceback.format_exc()
+                }))
+                if raise_every_time:
+                    self.print_last_fail(failed)
+                    raise
+                continue
+
