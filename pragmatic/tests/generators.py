@@ -19,9 +19,13 @@ from django.apps import apps
 from django.contrib.auth.models import User
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
-from django.contrib.gis.db import models as gis_models
-from django.contrib.gis import forms as gis_forms
-from django.contrib.gis.geos import Point
+
+try:
+    from django.contrib.gis import forms as gis_forms
+    from django.contrib.gis.db import models as gis_models
+    from django.contrib.gis.geos import Point
+except:
+    pass
 from django.contrib.messages.storage.fallback import FallbackStorage
 from django.contrib.postgres.fields import DateTimeRangeField, DateRangeField, JSONField
 from django.contrib.postgres import forms as postgress_forms
@@ -79,7 +83,7 @@ class GenericTestMixin(object):
     @property
     def default_field_map(self):
         # values can be callables with with field variable
-        return {
+        map = {
             ForeignKey: lambda f: self.get_generated_obj(f.related_model),
             OneToOneField: lambda f: self.get_generated_obj(f.related_model),
             BooleanField: False,
@@ -91,7 +95,6 @@ class GenericTestMixin(object):
             CountryField: 'LU',
             # IBANField: 'LU28 0019 4006 4475 0000',
             # SWIFTBICField: 'BCEELULL',
-            gis_models.PointField: Point(0.1276, 51.5072),
             VATNumberField: lambda f: 'LU{}'.format(random.randint(10000000, 99999999)),  # 'GB904447273',
             DateTimeField: now(),
             DateField: now().date(),
@@ -110,10 +113,19 @@ class GenericTestMixin(object):
             JSONField: {},
         }
 
+        try:
+            map.update({
+                gis_models.PointField: Point(0.1276, 51.5072),
+            })
+        except NameError:
+            pass
+
+        return map
+
     @property
     def default_form_field_map(self):
         # values can be callables with with field variable
-        return {
+        map = {
             django_form_fields.EmailField: lambda f: self.get_new_email(),
             django_form_fields.CharField: lambda f: '{}_{}'.format(f.label, random.randint(1, 999))[:f.max_length],
             django_form_fields.TypedChoiceField: lambda f: list(f.choices)[-1][0] if f.choices else '{}'.format(f.label)[:f.max_length],
@@ -139,12 +151,18 @@ class GenericTestMixin(object):
             django_form_fields.NullBooleanField: True,
             # IBANFormField: 'LU28 0019 4006 4475 0000',
             # TagField: lambda f: 'tag',
-            gis_forms.PointField: 'POINT (0.1276 51.5072)',
             django_form_fields.DurationField: 1,
             postgress_forms.SimpleArrayField: lambda f: [self.default_form_field_map[f.base_field.__class__](f.base_field)],
             django_form_fields.FloatField: lambda f: self.get_num_field_mock_value(f),
             django_form_fields.MultipleChoiceField: lambda f: [list(f.choices)[-1][0]] if f.choices else ['{}'.format(f.label)],
         }
+        try:
+            map.update({
+                gis_forms.PointField: 'POINT (0.1276 51.5072)',
+            })
+        except NameError:
+            pass
+        return map
 
     def import_modules_if_needed(self):
         module_names = self.get_submodule_names(self.CHECK_MODULES, self.CHECK_MODULES, self.EXCLUDE_MODULES)
