@@ -1,13 +1,11 @@
 from itertools import chain
 
 from django import forms
-from django.conf import settings
 from django.forms import TextInput
 from django.forms.widgets import CheckboxSelectMultiple, CheckboxInput
 from django.utils.encoding import force_text
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
-from mapwidgets import GooglePointFieldWidget
 
 
 class GroupedCheckboxSelectMultiple(CheckboxSelectMultiple):
@@ -202,23 +200,28 @@ class VersionedMediaJS:
 forms.widgets.Media.render_js = VersionedMediaJS.render_js
 
 
-class AutocompleteGooglePointFieldWidget(GooglePointFieldWidget):
-    @property
-    def media(self):
-        js = super().media._js + ["pragmatic/js/map-widget-utils.js", ]
-        return forms.Media(js=js, css=super().media._css)
+try:
+    import mapwidgets
 
-    def render(self, name, value, attrs=None, renderer=None):
-        return super().render(name, value, attrs)
+    class AutocompleteGooglePointFieldWidget(mapwidgets.GooglePointFieldWidget):
+        @property
+        def media(self):
+            js = super().media._js + ["pragmatic/js/map-widget-utils.js", ]
+            return forms.Media(js=js, css=super().media._css)
+
+        def render(self, name, value, attrs=None, renderer=None):
+            return super().render(name, value, attrs)
 
 
-class AutocompleteCityWidget(TextInput):
-    def __init__(self, attrs=None):
-        super().__init__(attrs)
-        from mapwidgets.settings import mw_settings
-        self.attrs['data-google-key'] = mw_settings.GOOGLE_MAP_API_KEY
+    class AutocompleteCityWidget(TextInput):
+        def __init__(self, attrs=None):
+            super().__init__(attrs)
+            from mapwidgets.settings import mw_settings
+            self.attrs['data-google-key'] = mw_settings.GOOGLE_MAP_API_KEY
 
-    @property
-    def media(self):
-        # js = VersionedMediaJS('pragmatic/js/city-autocomplete.js', settings.DEPLOYMENT_TIMESTAMP)  # TODO: fix version
-        return forms.Media(js=('pragmatic/js/city-autocomplete.js',))
+        @property
+        def media(self):
+            # js = VersionedMediaJS('pragmatic/js/city-autocomplete.js', settings.DEPLOYMENT_TIMESTAMP)  # TODO: fix version
+            return forms.Media(js=('pragmatic/js/city-autocomplete.js',))
+except ImportError:
+    pass
