@@ -54,9 +54,13 @@ from internationalflavor.vat_number import VATNumberField, VATNumberFormField
 # from taggit.forms import TagField
 
 
-class GenericTestMixin(object):
+class GenericBaseMixin(object):
     # USER_MODEL = User
     objs = OrderedDict()
+    TEST_PASSWORD = 'testpassword'
+    RUN_ONLY_THESE_URL_NAMES = []  # for debug purposes to save time
+    IGNORE_URL_NAMES_CONTAINING = []
+
 
     @property
     def model_field_values_map(self):
@@ -724,17 +728,6 @@ class GenericTestMixin(object):
 
         return random.randint(1, 9)
 
-
-
-class GenericTestCase(GenericTestMixin, TestCase):
-    '''IGNORE_URL_NAMES_CONTAINING = [
-        'select2',
-    ]
-    '''
-    RUN_ONLY_THESE_URL_NAMES = [] # for debug purposes to save time
-    IGNORE_URL_NAMES_CONTAINING = []
-    TEST_PASSWORD = 'testpassword'
-
     @property
     def url_params_map(self):
         '''{
@@ -783,7 +776,7 @@ class GenericTestCase(GenericTestMixin, TestCase):
         return self.generate_func_args(filter_class.__init__, default=default)
 
     def setUp(self):
-        super(GenericTestCase, self).setUp()
+        super(GenericBaseMixin, self).setUp()
         self.generate_objs()
         user = self.objs.get('superuser', self.get_generated_obj(self.user_model))
         logged_in = self.client.login(email=user.email, username=user.username, password=self.TEST_PASSWORD)
@@ -792,13 +785,20 @@ class GenericTestCase(GenericTestMixin, TestCase):
 
     def tearDown(self):
         # self.delete_ojbs()
-        super(GenericTestCase, self).tearDown()
+        super(GenericBaseMixin, self).tearDown()
 
     def print_last_fail(self, failed):
         for k, v in failed[-1].items():
             print(k)
             print(v)
 
+
+
+class GenericTestMixin(object):
+    '''
+    Only containing generic tests
+    eveything else, setup methods etc., is in GenericBaseMixin
+    '''
     def test_urls(self):
         raise_every_time = self.RAISE_EVERY_TIME
 
