@@ -299,7 +299,7 @@ def barcode(code, args=None):
         # return as HTML element
         return mark_safe('<img src="data:image/png;base64,' + barcode + '" />')
     except IllegalCharacterError as e:
-        message = unicode(e)
+        message = str(e)
         character = message.split(':', 1)[1]
         return '{}: {}'.format(_('Invalid characters'), character)
 
@@ -390,7 +390,7 @@ def translate(text):
 @register.filter
 def filename(value):
     try:
-        return os.path.basename(unicode(value.file.name))
+        return os.path.basename(str(value.file.name))
     except:
         return value
 
