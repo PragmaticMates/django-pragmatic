@@ -1,11 +1,10 @@
 import importlib
 import inspect
-import pkgutil
 import re
 import sys
+from pprint import pformat
 
 import django_filters
-from django.apps import apps
 
 from pragmatic.tests.generators import GenericTestMixin
 
@@ -39,6 +38,7 @@ class MissingTestMixin(GenericTestMixin):
     def test_for_missing_filters(self):
         module_names = self.get_submodule_names(self.CHECK_MODULES, 'filters', self.EXCLUDE_MODULES)
         filter_classes = set()
+        failed = []
 
         # get filter classes
         for module_name in module_names:
@@ -78,13 +78,22 @@ class MissingTestMixin(GenericTestMixin):
 
         for cls in filter_classes:
             # test filter class test existence
-            self.assertTrue(cls.__name__ in tested_class_names, f'{cls.__module__}.{cls.__name__} test missing')
+            if not cls.__name__ in tested_class_names:
+                failed.append(f'{cls.__module__}.{cls.__name__} test missing')
 
             # test filter class methods tests existence
             if issubclass(cls, django_filters.FilterSet):
                 filter_methods_names = {f'{cls.__name__}.{key}' for key, value in cls.__dict__.items() if callable(value) and key.startswith('filter')}
                 not_tested_methods = filter_methods_names - tested_method_names
-                self.assertEqual(not_tested_methods, set(), f'missing tests for {not_tested_methods}')
+
+                if not_tested_methods != set():
+                    failed.append(not_tested_methods)
+
+        if failed:
+            # append failed count at the end of error list
+            failed.append(f'{len(failed)} filter tests missing')
+
+        self.assertEqual(len(failed), 0, msg=pformat(failed, indent=4))
 
     def test_for_missing_managers(self):
         module_names = self.get_submodule_names(self.CHECK_MODULES, ['managers', 'querysets'], self.EXCLUDE_MODULES)
@@ -270,24 +279,34 @@ class MissingTestMixin(GenericTestMixin):
             if not any([exclude_name in path for exclude_name in self.EXCLUDE_MODULES]):
                 tested_permissions[permission_name][path].append(test.__name__)
 
+        failed = []
+
         for permission_name, locations in explicit_permissions.items():
             for path, lines in locations.items():
-                self.assertEqual(
-                    len(lines),
-                    len(tested_permissions[permission_name][path]),
-                    f'Missing test for permission "{permission_name}" in "{path}", lines {lines}. \n Tests found: {sorted(tested_permissions[permission_name])}'
-                )
+                if len(lines) != len(tested_permissions[permission_name][path]):
+                    failed.append({
+                        'permission': permission_name,
+                        'path': path,
+                        'lines': lines,
+                        'tests found': tested_permissions[permission_name]
+                    })
 
                 del tested_permissions[permission_name][path]
 
         surplus_tests = []
         for tests in tested_permissions[permission_name].values():
             surplus_tests.extend(tests)
-            self.assertEqual(
-                surplus_tests,
-                [],
-                f'Surplus tests found: {surplus_tests}'
-            )
+
+        if surplus_tests:
+            failed.append({
+                'surplus tests': surplus_tests
+            })
+
+        if failed:
+            # append failed count at the end of error list
+            failed.append(f'{len(failed)} permission tests missing')
+
+        self.assertEqual(len(failed), 0, msg=pformat(failed, indent=4))
 
     def get_explicit_permissions_by_module(self, parent_module_names, submodule_names, exclude):
         module_names = self.get_submodule_names(parent_module_names, submodule_names, exclude)
