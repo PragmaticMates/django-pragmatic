@@ -286,7 +286,7 @@ def qrcode(value, alt=None):
                              urllib.urlencode({'chs': '250x250', 'cht': 'qr', 'chl': value, 'choe': 'UTF-8'}))
     alt = conditional_escape(alt or value)
 
-    return mark_safe(u"""<img class="qrcode" src="%s" width="250" height="250" alt="%s" />""" % (url, alt))
+    return mark_safe("""<img class="qrcode" src="%s" width="250" height="250" alt="%s" />""" % (url, alt))
 
 
 @register.filter
@@ -658,3 +658,9 @@ def objects_stats(objects, count_attr, sum_attr=None):
 @register.filter
 def date_from_isoformat(date_string):
     return datetime.date.fromisoformat(date_string)
+
+
+@register.simple_tag()
+def values_list(qs, attrs):
+    attributes = attrs.split(',')
+    return qs.values_list(*attributes, flat=True)
