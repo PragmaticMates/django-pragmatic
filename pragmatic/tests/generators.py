@@ -13,7 +13,6 @@ from pprint import pformat, pprint
 import sys
 from collections import OrderedDict
 
-from allauth.account.forms import PasswordField, SetPasswordField
 from django import urls
 from django.apps import apps
 from django.contrib.auth.models import User
@@ -41,12 +40,9 @@ from django.test import TestCase, RequestFactory
 from django.urls import reverse
 from django.utils.timezone import now
 from django.views.generic import CreateView, UpdateView, DeleteView
-import django_countries.fields as django_countries_fields
-from django_iban.fields import IBANField, IBANFormField, SWIFTBICField
 from internationalflavor.countries import CountryField, CountryFormField
 from internationalflavor.countries.data import UN_RECOGNIZED_COUNTRIES
 from internationalflavor.vat_number import VATNumberField, VATNumberFormField
-from taggit.forms import TagField
 
 
 class GenericBaseMixin(object):
@@ -102,10 +98,7 @@ class GenericBaseMixin(object):
             CharField: lambda f: list(f.choices)[0][0] if f.choices else '{}_{}'.format(f.model._meta.label_lower, f.name)[:f.max_length],
             SlugField: lambda f: '{}_{}'.format(f.name, self.next_id(f.model)),
             EmailField: lambda f: '{}.{}@example.com'.format(f.model._meta.label_lower, self.next_id(f.model)),
-            django_countries_fields.CountryField: 'LU',
             CountryField: 'LU',
-            IBANField: 'LU28 0019 4006 4475 0000',
-            SWIFTBICField: 'BCEELULL',
             gis_models.PointField: Point(0.1276, 51.5072),
             VATNumberField: lambda f: 'LU{}'.format(random.randint(10000000, 99999999)),  # 'GB904447273',
             DateTimeField: now(),
@@ -135,12 +128,8 @@ class GenericBaseMixin(object):
             django_form_fields.CharField: lambda f: '{}_{}'.format(f.label, random.randint(1, 999))[:f.max_length],
             django_form_fields.TypedChoiceField: lambda f: list(f.choices)[-1][0] if f.choices else '{}'.format(f.label)[:f.max_length],
             django_form_fields.ChoiceField: lambda f: list(f.choices)[-1][0] if f.choices else '{}'.format(f.label)[:f.max_length],
-            PasswordField: self.TEST_PASSWORD,
-            SetPasswordField: self.TEST_PASSWORD,
             CountryFormField: 'LU',  # random.choice(UN_RECOGNIZED_COUNTRIES),
-            django_countries_fields.LazyTypedChoiceField: 'LU',  # random.choice(UN_RECOGNIZED_COUNTRIES),
             VATNumberFormField: lambda f: 'LU{}'.format(random.randint(10000000, 99999999)),  # 'GB904447273',
-            django_form_fields.URLField: lambda f: f'www.{f.model._meta.label_lower}.com',
             django_form_fields.ImageField: self.get_image_file_mock(),
             django_form_fields.FileField: self.get_pdf_file_mock(),
             django_form_fields.DateTimeField: lambda f: now().strftime(list(f.input_formats)[-1]) if hasattr(f, 'input_formats') else now(),
@@ -153,8 +142,6 @@ class GenericBaseMixin(object):
             django_filter_fields.ModelChoiceField: lambda f: f.queryset.first().id,
             django_filter_fields.ChoiceField: lambda f: list(f.choices)[-1][0],
             django_form_fields.NullBooleanField: True,
-            IBANFormField: 'LU28 0019 4006 4475 0000',
-            TagField: lambda f: 'tag',
             gis_forms.PointField: 'POINT (0.1276 51.5072)',
             django_form_fields.DurationField: 1,
             postgres_forms.SimpleArrayField: lambda f: [self.default_form_field_map[f.base_field.__class__](f.base_field)],
