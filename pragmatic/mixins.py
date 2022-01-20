@@ -227,7 +227,7 @@ class FPDFMixin(object):
         self.write_pdf_content()
 
         self.response = HttpResponse(
-            content=self.pdf.output(dest='S'),
+            content=bytes(self.pdf.output()),
             content_type='application/octet-stream'
         )
 #        self.response['Content-Type'] = 'application/octet-stream; charset=UTF-8'

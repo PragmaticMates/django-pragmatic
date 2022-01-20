@@ -300,8 +300,12 @@ def barcode(code, args=None):
         return mark_safe('<img src="data:image/png;base64,' + barcode + '" />')
     except IllegalCharacterError as e:
         message = str(e)
-        character = message.split(':', 1)[1]
-        return '{}: {}'.format(_('Invalid characters'), character)
+
+        if ':' in message:
+            character = message.split(':', 1)[1]
+            return '{}: {}'.format(_('Invalid characters'), character)
+        else:
+            return message
 
 
 @register.inclusion_tag('helpers/pagination.html', takes_context=True)
