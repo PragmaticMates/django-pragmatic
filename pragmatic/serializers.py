@@ -29,6 +29,10 @@ class ContentTypeSerializer(serializers.ModelSerializer):
 
 
 class ContentTypeNaturalField(serializers.PrimaryKeyRelatedField):
+    def __init__(self, **kwargs):
+        self.queryset = kwargs.pop('queryset', ContentType.objects.all())
+        super().__init__(**kwargs)
+
     def use_pk_only_optimization(self):
         return False
 
