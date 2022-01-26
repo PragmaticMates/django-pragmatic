@@ -317,6 +317,7 @@ class GenericBaseMixin(object):
         source = inspect.getsource(func)
         args = r'([^\)]*)'
         args = re.findall('def {}\({}\):'.format(func.__name__, args), source)
+        args = [args[0].replace(' *,', '')] # dont really get why would someone use this but it happened
         return self.generate_kwargs(*self.parse_args(args[0], eval_args=False, eval_kwargs=False), func=func, default=default)
 
     def generate_form_data(self, form, default_data):
@@ -379,7 +380,8 @@ class GenericBaseMixin(object):
                 app_name = [module_name.replace('.urls', '').split('.')[-1]]
 
             paths_by_module[module_name] = [{
-                'path_name': '{}:{}'.format(app_name[0], regex_path[5]),
+                'app_name': app_name[0],
+                'path_name': regex_path[5],
                 'url_pattern': regex_path[1] if regex_path[1] else regex_path[2],
                 'view_class': imported_classes.get(regex_path[3], None),
                 'view_params': self.parse_args(regex_path[4], eval_args=False, eval_kwargs=False),
@@ -774,7 +776,7 @@ class GenericBaseMixin(object):
         self.user = user
 
     def tearDown(self):
-        self.delete_ojbs()
+        # self.delete_ojbs()
         super(GenericBaseMixin, self).tearDown()
 
     def print_last_fail(self, failed):
@@ -797,11 +799,20 @@ class GenericTestMixin(object):
         failed = []
         tested = []
         for module_name, module_params in self.get_url_views_by_module().items():
+            module_namespace = module_name.replace('.urls', '').split('.')[-1]
+
             for path_params in module_params:
                 print(path_params)
-                path_namespace, path_name = path_params['path_name'].split(':')
+                app_name = path_params['app_name']
+                path_name = path_params['path_name']
+                # path_namespace, path_name = path_params['path_name'].split(':')
+
                 namespaces = [namespace for namespace, namespace_path_names in self.get_url_namespace_map().items() if
-                              namespace.endswith(path_namespace) and path_name in namespace_path_names]
+                              namespace.endswith(module_namespace) and path_name in namespace_path_names]
+
+                if not namespaces:
+                    namespaces = [namespace for namespace, namespace_path_names in self.get_url_namespace_map().items() if
+                                  namespace.endswith(app_name) and path_name in namespace_path_names]
 
                 if len(namespaces) != 1:
                     failed.append(OrderedDict({
