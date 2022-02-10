@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-from setuptools import setup
+from setuptools import setup, find_packages
 
 from pragmatic import VERSION
 
@@ -13,13 +13,7 @@ setup(
     maintainer='Pragmatic Mates',
     maintainer_email='info@pragmaticmates.com',
     url='https://github.com/PragmaticMates/django-pragmatic',
-    packages=[
-        'pragmatic',
-        'pragmatic.management',
-        'pragmatic.migrations',
-        'pragmatic.models',
-        'pragmatic.templatetags'
-    ],
+    packages=find_packages(),
     include_package_data=True,
     install_requires=('django-filter', 'django', 'python-pragmatic'),
     classifiers=[
