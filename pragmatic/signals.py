@@ -211,18 +211,35 @@ class temporary_disconnect_signal:
         self.receiver = receiver
         self.sender = sender
         self.dispatch_uid = dispatch_uid
+        self.entered_connected = False
 
     def __enter__(self):
-        self.signal.disconnect(
-            receiver=self.receiver,
-            sender=self.sender,
-            dispatch_uid=self.dispatch_uid,
-        )
+        # check if receiver is connected same way as signal.disconnect
+        from django.dispatch.dispatcher import _make_id
+
+        if self.dispatch_uid:
+            lookup_key = (self.dispatch_uid, _make_id(self.sender))
+        else:
+            lookup_key = (_make_id(self.receiver), _make_id(self.sender))
+
+        for index in range(len(self.signal.receivers)):
+            (r_key, _) = self.signal.receivers[index]
+            if r_key == lookup_key:
+                self.entered_connected = True
+                break
+
+        if self.entered_connected:
+            self.signal.disconnect(
+                receiver=self.receiver,
+                sender=self.sender,
+                dispatch_uid=self.dispatch_uid,
+            )
 
     def __exit__(self, type, value, traceback):
-        self.signal.connect(
-            receiver=self.receiver,
-            sender=self.sender,
-            dispatch_uid=self.dispatch_uid,
-            weak=False
-        )
+        if self.entered_connected:
+            self.signal.connect(
+                receiver=self.receiver,
+                sender=self.sender,
+                dispatch_uid=self.dispatch_uid,
+                weak=False
+            )
