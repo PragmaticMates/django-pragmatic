@@ -769,6 +769,7 @@ class GenericBaseMixin(object):
 
     def setUp(self):
         super(GenericBaseMixin, self).setUp()
+        self.import_modules_if_needed()
         self.generate_objs()
         user = self.objs.get('superuser', self.get_generated_obj(self.user_model))
         logged_in = self.client.login(email=user.email, username=user.username, password=self.TEST_PASSWORD)
@@ -969,8 +970,13 @@ class GenericTestMixin(object):
                             raise
                         continue
 
-                    path = reverse(path_name, args=parsed_args, kwargs=params_map.get('kwargs', {}))
+                    path = reverse(path_name, args=parsed_args)
                     data = params_map.get('data', {})
+                    kwargs = params_map.get('kwargs', {})
+
+                    if kwargs:
+                        kwargs = '&'.join([f'{key}={value}' for key, value in kwargs.items()])
+                        path = f'{path}?{kwargs}'
 
                     # GET url
                     if not path_name in self.POST_ONLY_URLS:
