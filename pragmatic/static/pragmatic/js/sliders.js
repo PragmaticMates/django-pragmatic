@@ -140,13 +140,13 @@ function init_slider(slider_element) {
             var beforeValue = getValidValue(inputBefore.val());
             try {
                 var val = JSON.parse("[" + beforeValue + ',' + afterValue + "]");
-                slider.slider('setValue', val);
+                slider.slider('setValue', val, false, true);
             } catch (e) {
                 // silently ignore
             }
 
         } else {
-            slider.slider('setValue', getValidValue(inputAfter.val()));
+            slider.slider('setValue', getValidValue(inputAfter.val()), false, true);
         }
     }
 
