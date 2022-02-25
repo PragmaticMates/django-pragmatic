@@ -22,16 +22,31 @@ register = template.Library()
 @register.simple_tag(takes_context=True)
 def translate_url(context, lang, *args, **kwargs):
     path = kwargs.get('path', None)
+    object = kwargs.get('object', None)
+    callable = kwargs.get('callable', None)
+
+    if path and (object or callable):
+        raise ValueError('"path" argument can not be used together with "object" or "callable"')
+
+    if object and not callable or callable and not object:
+        raise ValueError('Both "object" or "callable" has to be defined')
 
     if not path:
-        obj = context.get('object', None)
-
-        if obj:
+        # custom object
+        if object:
             with override_language(lang):
-                return obj.get_absolute_url()
+                path = getattr(object, callable)()
+                return django_translate_url(path, lang)
 
-        request = context.get('request', None)
-        path = request.path if request else f'/{lang}/'
+        # context object
+        context_object = context.get('object', None)
+
+        if context_object:
+            with override_language(lang):
+                return context_object.get_absolute_url()
+
+        # URL path
+        path = context['request'].path
 
     return django_translate_url(path, lang)
 
