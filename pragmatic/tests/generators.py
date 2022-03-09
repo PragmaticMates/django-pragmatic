@@ -253,6 +253,14 @@ class GenericBaseMixin(object):
     def get_new_email(self):
         return 'email.{}@example.com'.format(random.randint(1, 999))
 
+    def get_mock_request(self, **kwargs):
+        request = RequestFactory().get('/')
+
+        for key, value in kwargs.items():
+            setattr(request, key, value)
+
+        return request
+
     def generate_kwargs(self, args=[], kwargs={}, func=None, default={}):
         # maching kwarg names with
         # 1. model names and assigns generated objs acordingly,
@@ -1305,7 +1313,22 @@ class GenericTestMixin(object):
             print(filter_class)
             params_map = self.filter_params_map.get(filter_class, {})
             init_kwargs = self.init_filter_kwargs(filter_class, default=params_map.get('init_kwargs', {}))
-            filter = filter_class(**init_kwargs)
+
+            try:
+                filter = filter_class(**init_kwargs)
+            except:
+                failed.append(OrderedDict({
+                    'location': 'FILTER INIT',
+                    'filter class': filter_class,
+                    'init_kwargs': init_kwargs,
+                    'params map': params_map,
+                    'traceback': traceback.format_exc()
+                }))
+                if raise_every_time:
+                    self.print_last_fail(failed)
+                    raise
+                continue
+
             query_dict_data = QueryDict('', mutable=True)
 
             try:
@@ -1352,3 +1375,8 @@ class GenericTestMixin(object):
                     self.print_last_fail(failed)
                     raise
                 continue
+
+        if failed:
+            failed.append('{} filters FAILED'.format(len(failed)))
+
+        self.assertFalse(failed, msg=pformat(failed, indent=4))
