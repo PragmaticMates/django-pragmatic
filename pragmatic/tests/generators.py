@@ -253,6 +253,14 @@ class GenericBaseMixin(object):
     def get_new_email(self):
         return 'email.{}@example.com'.format(random.randint(1, 999))
 
+    def get_mock_request(self, **kwargs):
+        request = RequestFactory().get('')
+
+        for key, value in kwargs.items():
+            setattr(request, key, value)
+
+        return request
+
     def generate_kwargs(self, args=[], kwargs={}, func=None, default={}):
         # maching kwarg names with
         # 1. model names and assigns generated objs acordingly,
