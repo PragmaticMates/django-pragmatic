@@ -254,7 +254,7 @@ class GenericBaseMixin(object):
         return 'email.{}@example.com'.format(random.randint(1, 999))
 
     def get_mock_request(self, **kwargs):
-        request = RequestFactory().get('')
+        request = RequestFactory().get('/')
 
         for key, value in kwargs.items():
             setattr(request, key, value)
