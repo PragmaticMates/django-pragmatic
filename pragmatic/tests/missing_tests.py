@@ -6,10 +6,10 @@ from pprint import pformat
 
 import django_filters
 
-from pragmatic.tests.generators import GenericTestMixin
+from pragmatic.tests.generators import GenericBaseMixin
 
 
-class MissingTestMixin(GenericTestMixin):
+class MissingTestMixin(GenericBaseMixin):
     CHECK_MODULES = []  # where to look for objects and methods that should be tested, override this, eg. [app.sub_app_1, app.sub_app_2]
     EXCLUDE_MODULES = ['migrations', 'commands', 'tests', 'settings']   # where not to look for objects and methods that should be tested
 
