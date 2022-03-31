@@ -563,6 +563,7 @@ class GenericBaseMixin(object):
     def generate_model_field_values(self, model, field_values={}):
         not_related_fields = self.get_models_fields(model, related=False)
         related_fields = self.get_models_fields(model, related=True)
+        m2m_values = {}
 
         for field in not_related_fields:
             if field.name not in self.IGNORE_MODEL_FIELDS and field.name not in field_values and (not isinstance(field, ManyToManyField)):
@@ -585,9 +586,11 @@ class GenericBaseMixin(object):
 
                 field_values[field.name] = field_value
 
-        # generate non required field values
         for field in related_fields:
-            if field.name not in self.IGNORE_MODEL_FIELDS and field.name not in field_values and (
+            if isinstance(field, ManyToManyField) and field.name in field_values:
+                m2m_values[field.name] = field_values[field.name]
+                del field_values[field.name]
+            elif field.name not in self.IGNORE_MODEL_FIELDS and field.name not in field_values and (
             not isinstance(field, ManyToManyField)) and field.related_model.objects.exists():
                 field_value = field.default
 
@@ -608,7 +611,7 @@ class GenericBaseMixin(object):
 
                 field_values[field.name] = field_value
 
-        return field_values
+        return field_values, m2m_values
 
     def generate_model_objs(self, model):
         # required_fields = self.get_models_fields(model, required_only=True)
@@ -627,7 +630,7 @@ class GenericBaseMixin(object):
 
             if not obj:
                 field_values = obj_values(self) if callable(obj_values) else obj_values
-                field_values = self.generate_model_field_values(model, field_values)
+                field_values, m2m_values = self.generate_model_field_values(model, field_values)
 
                 if model == self.user_model:
                     if hasattr(self, 'create_user'):
@@ -642,6 +645,9 @@ class GenericBaseMixin(object):
                     except Exception as e:
                         obj = model(**field_values)
                         obj.save()
+
+                for m2m_attr, m2m_value in m2m_values.items():
+                    getattr(obj, m2m_attr).set(m2m_value)
 
                 new_objs.append(obj)
                 self.objs[obj_name] = obj
