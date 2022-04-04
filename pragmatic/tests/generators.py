@@ -54,6 +54,7 @@ class GenericBaseMixin(object):
     RUN_ONLY_THESE_URL_NAMES = []  # for debug purposes to save time
     IGNORE_URL_NAMES_CONTAINING = []
     POST_ONLY_URLS = []
+    GET_ONLY_URLS = []
 
     def manual_model_dependency(self):
         '''
@@ -1078,7 +1079,7 @@ class GenericTestMixin(object):
                                                 raise
 
                     # POST url
-                    if getattr(view_class, 'form_class', None):
+                    if path_name not in self.GET_ONLY_URLS and getattr(view_class, 'form_class', None):
                         form_class = view_class.form_class
                         form_kwargs = params_map.get('form_kwargs', self.generate_func_args(form_class.__init__))
                         form_kwargs = {key: value(self) if callable(value) else value for key,value in form_kwargs.items()}
