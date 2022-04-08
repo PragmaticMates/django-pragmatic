@@ -564,6 +564,7 @@ class GenericBaseMixin(object):
     def generate_model_field_values(self, model, field_values={}):
         not_related_fields = self.get_models_fields(model, related=False)
         related_fields = self.get_models_fields(model, related=True)
+        field_values = dict(field_values)
         m2m_values = {}
 
         for field in not_related_fields:
