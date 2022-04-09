@@ -564,6 +564,7 @@ class GenericBaseMixin(object):
     def generate_model_field_values(self, model, field_values={}):
         not_related_fields = self.get_models_fields(model, related=False)
         related_fields = self.get_models_fields(model, related=True)
+        field_values = dict(field_values)
         m2m_values = {}
 
         for field in not_related_fields:
@@ -1137,33 +1138,33 @@ class GenericTestMixin(object):
                         try:
                             response = self.client.post(path=path, data=form_kwargs['data'], follow=True)
                             self.assertEqual(response.status_code, 200)
-                        except ValidationError as e:
-                            if e.message == 'ManagementForm data is missing or has been tampered with':
-                                post_data = None
-
-                                try:
-                                    post_data = self.create_formset_post_data(get_response, form_kwargs['data'], form_kwargs.get('formset_data', []))
-                                    response = self.client.post(path=path, data=post_data, follow=True)
-                                    self.assertEqual(response.status_code, 200)
-                                except Exception as e:
-                                    failed.append(OrderedDict({
-                                        'location': 'POST FORMSET',
-                                        'url name': path_name,
-                                        'url': path,
-                                        'url pattern': url_pattern,
-                                        'parsed args': parsed_args,
-                                        'form class': form_class,
-                                        'data': form_kwargs['data'],
-                                        'post data': post_data,
-                                        'form': form,
-                                        'traceback': traceback.format_exc()
-                                    }))
-                                    if raise_every_time:
-                                        self.print_last_fail(failed)
-                                        raise
-                                    continue
-                            else:
-                                raise
+                        # except ValidationError as e:
+                        #     if e.message == 'ManagementForm data is missing or has been tampered with':
+                        #         post_data = None
+                        #
+                        #         try:
+                        #             post_data = self.create_formset_post_data(get_response, form_kwargs['data'], form_kwargs.get('formset_data', []))
+                        #             response = self.client.post(path=path, data=post_data, follow=True)
+                        #             self.assertEqual(response.status_code, 200)
+                        #         except Exception as e:
+                        #             failed.append(OrderedDict({
+                        #                 'location': 'POST FORMSET',
+                        #                 'url name': path_name,
+                        #                 'url': path,
+                        #                 'url pattern': url_pattern,
+                        #                 'parsed args': parsed_args,
+                        #                 'form class': form_class,
+                        #                 'data': form_kwargs['data'],
+                        #                 'post data': post_data,
+                        #                 'form': form,
+                        #                 'traceback': traceback.format_exc()
+                        #             }))
+                        #             if raise_every_time:
+                        #                 self.print_last_fail(failed)
+                        #                 raise
+                        #             continue
+                        #     else:
+                        #         raise
                         except Exception as e:
                             failed.append(OrderedDict({
                                 'location': 'POST',
