@@ -173,8 +173,8 @@ class UrlTestMixin(object):
                     raise TypeError()
 
                 if not isinstance(form, BaseFormSet):
-                    # skip formset data  # TODO: improve
-                    data_without_formset = {key: value for key, value in data.items() if not key.startswith('form-')}
+                    # skip formset data and split field subfields # TODO: improve
+                    data_without_formset = {key: value for key, value in data.items() if not (key.startswith('form-') or key.endswith(('_0', '_1')))}
 
                     # check if all fields are passed, if not pass problem fields to fail message
                     self.assertEqual(
@@ -279,11 +279,16 @@ class ManagerTestMixin(object):
         checked_methods = set()
         manager_class = qs_or_manager if isclass(qs_or_manager) else qs_or_manager.__class__
         properties = {p for p in dir(manager_class) if isinstance(getattr(manager_class, p), property)}
+        non_existing_methods = set()
 
         for method_name, params in methods_with_params.items():
             checked_methods.add(method_name)
 
-            method = getattr(qs_or_manager, method_name)
+            try:
+                method = getattr(qs_or_manager, method_name)
+            except AttributeError:
+                non_existing_methods.add(method_name)
+                continue
 
             # if attribute is property continue
             if method_name in properties:
@@ -303,6 +308,7 @@ class ManagerTestMixin(object):
                             and not isclass(getattr(qs_or_manager, attr))}
 
         missing_methods = existing_methods - checked_methods
+        self.assertEqual(len(non_existing_methods), 0, "Non existent tested methods: {}".format(non_existing_methods))
         self.assertEqual(len(missing_methods), 0, "Missing methods: {}".format(missing_methods))
 
     def check_manager_method(self, method, exception=None, **kwargs):
