@@ -15,7 +15,6 @@ from collections import OrderedDict
 
 from django import urls
 from django.apps import apps
-from django.contrib.auth.models import User
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.gis.db import models as gis_models
@@ -52,6 +51,7 @@ class GenericBaseMixin(object):
     RAISE_EVERY_TIME = False
     IGNORE_MODEL_FIELDS = []
     RUN_ONLY_THESE_URL_NAMES = []  # for debug purposes to save time
+    RUN_URL_NAMES_CONTAINING = []
     IGNORE_URL_NAMES_CONTAINING = []
     POST_ONLY_URLS = []
     GET_ONLY_URLS = []
@@ -332,11 +332,12 @@ class GenericBaseMixin(object):
     def generate_form_data(self, form, default_data):
         data = {}
 
+        for name, field in default_data.items():
+            value = default_data[name]
+            data[name] = value(self) if callable(value) else value
+
         for name, field in form.fields.items():
-            if name in default_data:
-                value = default_data[name]
-                data[name] = value(self) if callable(value) else value
-            else:
+            if name not in data and not isinstance(field, django_form_models.InlineForeignKeyField): # inline fk is is sued in inline formsets
                 value = self.default_form_field_map[field.__class__]
                 data[name] = value(field) if callable(value) else value
 
@@ -589,11 +590,11 @@ class GenericBaseMixin(object):
                 field_values[field.name] = field_value
 
         for field in related_fields:
-            if isinstance(field, ManyToManyField) and field.name in field_values:
-                m2m_values[field.name] = field_values[field.name]
-                del field_values[field.name]
-            elif field.name not in self.IGNORE_MODEL_FIELDS and field.name not in field_values and (
-            not isinstance(field, ManyToManyField)) and field.related_model.objects.exists():
+            if isinstance(field, ManyToManyField):
+                if field.name in field_values:
+                    m2m_values[field.name] = field_values[field.name]
+                    del field_values[field.name]
+            elif field.name not in self.IGNORE_MODEL_FIELDS and field.name not in field_values and field.related_model.objects.exists():
                 field_value = field.default
 
                 if inspect.isclass(field.default) and issubclass(field.default,
@@ -663,7 +664,12 @@ class GenericBaseMixin(object):
                 model = model._meta.concrete_model
 
             if model in self.model_field_values_map.keys():
-                obj_name = sorted(list(self.model_field_values_map[model].keys()))[0]
+                if model == self.user_model and 'superuser' in self.model_field_values_map[model].keys():
+                    obj_name = 'superuser'
+                elif isinstance(self.model_field_values_map[model], OrderedDict):
+                    obj_name = list(self.model_field_values_map[model].keys())[0]
+                else:
+                    obj_name = sorted(list(self.model_field_values_map[model].keys()))[0]
 
             if obj_name not in self.objs:
                 obj_name = model._meta.label_lower.replace('.', '_')
@@ -788,7 +794,15 @@ class GenericBaseMixin(object):
         self.import_modules_if_needed()
         self.generate_objs()
         user = self.objs.get('superuser', self.get_generated_obj(self.user_model))
-        logged_in = self.client.login(email=user.email, username=user.username, password=self.TEST_PASSWORD)
+        credentials = {'password': self.TEST_PASSWORD}
+
+        if hasattr(user, 'email'):
+            credentials['email'] = user.email
+
+        if hasattr(user, 'username'):
+            credentials['username'] = user.username
+
+        logged_in = self.client.login(**credentials)
         self.assertTrue(logged_in)
         self.user = user
 
@@ -800,6 +814,30 @@ class GenericBaseMixin(object):
         for k, v in failed[-1].items():
             print(k)
             print(v)
+
+    def create_formset_post_data(self, response, post_data={}):
+        post_data = {**post_data}
+        formset_keys = [key for key in response.context.keys() if 'formset' in key and response.context[key]]
+
+        for formset_key in formset_keys:
+            formset = response.context[formset_key]
+            # prefix_template = formset.empty_form.prefix # default is 'form-__prefix__'
+            prefix = f'{formset.prefix}-'
+            # extract initial formset data
+            management_form_data = formset.management_form.initial
+
+            # add properly prefixed management form fields
+            for key, value in management_form_data.items():
+                # prefix = prefix_template.replace('__prefix__', '')
+                post_data[prefix + key] = value
+
+            # generate individual forms data
+            for index, form in enumerate(formset.forms):
+                form_prefix = f'{prefix}{index}-'
+                default_form_data = {key.replace(form_prefix, ''): value for key, value in post_data.items() if key.startswith(form_prefix)}
+                post_data.update({f'{form_prefix}{key}': value for key, value in self.generate_form_data(form, default_form_data).items()})
+
+        return post_data
 
 
 
@@ -819,7 +857,7 @@ class GenericTestMixin(object):
             module_namespace = module_name.replace('.urls', '').split('.')[-1]
 
             for path_params in module_params:
-                print(path_params)
+                # print(path_params)
                 app_name = path_params['app_name']
                 path_name = path_params['path_name']
                 # path_namespace, path_name = path_params['path_name'].split(':')
@@ -847,19 +885,29 @@ class GenericTestMixin(object):
                 path_name = '{}:{}'.format(namespaces[0], path_name)
 
                 if self.RUN_ONLY_THESE_URL_NAMES and path_name not in self.RUN_ONLY_THESE_URL_NAMES:
+                    # print('SKIP')
+                    continue
+
+                if self.RUN_URL_NAMES_CONTAINING and not path_name.endswith(tuple(self.RUN_URL_NAMES_CONTAINING)) and not path_name.startswith(tuple(self.RUN_URL_NAMES_CONTAINING)):
+                    # print('SKIP')
                     continue
 
                 if path_name.endswith(tuple(self.IGNORE_URL_NAMES_CONTAINING)) or path_name.startswith(tuple(self.IGNORE_URL_NAMES_CONTAINING)):
+                    # print('SKIP')
                     continue
 
+                print(path_params)
                 tested.append(path_params)
                 url_pattern = path_params["url_pattern"]
                 args = re.findall(r'<([:\w]+)>', url_pattern)
                 params_maps = self.url_params_map.get(path_name, {'default': {}})
 
                 for map_name, params_map in params_maps.items():
-                    parsed_args = params_map.get('args', [])
+                    parsed_args = params_map.get('args', []) if args else []
                     view_class = path_params['view_class']
+
+                    if len(params_maps) > 1 and parsed_args and len(args) != len(parsed_args):
+                        continue
 
                     if args and not parsed_args:
                         params_map['parsed'] = []
@@ -906,20 +954,23 @@ class GenericTestMixin(object):
 
                                     if len(matching_fields) > 1:
                                         # match field  model
-                                        matching_fields = [(field, model) for field, model in matching_fields if
-                                                           model == view_model]
+                                        matching_fields = [(field, model) for field, model in matching_fields if model == view_model]
 
                                     elif not matching_fields:
-                                        # match name in form model_field to model and field
-                                        matching_fields = [(field, model) for field, model in fields if
-                                                           name == '{}_{}'.format(model._meta.label_lower.split(".")[-1], field.name)]
+                                        # full name match
+                                        matching_fields = [(field, model) for field, model in fields if field.name == name and not model._meta.proxy]
 
                                         if not matching_fields:
-                                            # this might make problems as only partial match is made
-                                            matching_fields = [(p[0], view_model) for p in
-                                                               inspect.getmembers(view_model,
-                                                                                  lambda o: isinstance(o, property)) if
-                                                               p[0].startswith(name)]
+                                            # match name in form model_field to model and field
+                                            matching_fields = [(field, model) for field, model in fields if
+                                                               name == '{}_{}'.format(model._meta.label_lower.split(".")[-1], field.name)]
+
+                                            if not matching_fields:
+                                                # this might make problems as only partial match is made
+                                                matching_fields = [(p[0], view_model) for p in
+                                                                   inspect.getmembers(view_model,
+                                                                                      lambda o: isinstance(o, property)) if
+                                                                   p[0].startswith(name)]
 
                             if len(matching_fields) != 1 or matching_fields[0][1] is None:
                                 failed.append(OrderedDict({
@@ -1015,7 +1066,9 @@ class GenericTestMixin(object):
                             continue
 
                         if hasattr(view_class, 'sorting_options'):  # and isinstance(view_class.sorting_options, dict):
-                            for sorting, label in view_class.sorting_options.items():
+                            sorting_options = params_map.get('sorting_options', view_class.sorting_options)
+
+                            for sorting, label in sorting_options.items():
                                 data['sorting'] = sorting
 
                                 try:
@@ -1037,8 +1090,9 @@ class GenericTestMixin(object):
 
 
                         if hasattr(view_class, 'displays'):
-                            # self.check_display_options(view, path, params)
-                            for display in view_class.displays:
+                            displays = params_map.get('displays', view_class.displays)
+
+                            for display in displays:
                                 data['display'] = display
 
                                 try:
@@ -1082,6 +1136,7 @@ class GenericTestMixin(object):
                     # POST url
                     if path_name not in self.GET_ONLY_URLS and getattr(view_class, 'form_class', None):
                         form_class = view_class.form_class
+                        view_model = view_class.model if hasattr(view_class, 'model') else form_class.model if hasattr(form_class, 'model') else None
                         form_kwargs = params_map.get('form_kwargs', self.generate_func_args(form_class.__init__))
                         form_kwargs = {key: value(self) if callable(value) else value for key,value in form_kwargs.items()}
                         form_kwargs['data'] = data
@@ -1129,42 +1184,64 @@ class GenericTestMixin(object):
                                 raise
                             continue
 
+                        if not view_model:
+                            continue
+
                         form_kwargs['data'] = query_dict_data
                         obj_count_before = 0
 
                         if issubclass(view_class, (CreateView, UpdateView, DeleteView)):
-                            obj_count_before = view_class.model.objects.all().count()
+                            obj_count_before = view_model.objects.all().count()
 
                         try:
                             response = self.client.post(path=path, data=form_kwargs['data'], follow=True)
                             self.assertEqual(response.status_code, 200)
-                        # except ValidationError as e:
-                        #     if e.message == 'ManagementForm data is missing or has been tampered with':
-                        #         post_data = None
-                        #
-                        #         try:
-                        #             post_data = self.create_formset_post_data(get_response, form_kwargs['data'], form_kwargs.get('formset_data', []))
-                        #             response = self.client.post(path=path, data=post_data, follow=True)
-                        #             self.assertEqual(response.status_code, 200)
-                        #         except Exception as e:
-                        #             failed.append(OrderedDict({
-                        #                 'location': 'POST FORMSET',
-                        #                 'url name': path_name,
-                        #                 'url': path,
-                        #                 'url pattern': url_pattern,
-                        #                 'parsed args': parsed_args,
-                        #                 'form class': form_class,
-                        #                 'data': form_kwargs['data'],
-                        #                 'post data': post_data,
-                        #                 'form': form,
-                        #                 'traceback': traceback.format_exc()
-                        #             }))
-                        #             if raise_every_time:
-                        #                 self.print_last_fail(failed)
-                        #                 raise
-                        #             continue
-                        #     else:
-                        #         raise
+                        except ValidationError as e:
+                            if e.message == 'ManagementForm data is missing or has been tampered with':
+                                post_data = QueryDict('', mutable=True)
+
+                                try:
+                                    post_data.update(self.create_formset_post_data(get_response, data))
+                                except Exception as e:
+                                    failed.append(OrderedDict({
+                                        'location': 'POST GENERATING FORMSET DATA',
+                                        'url name': path_name,
+                                        'url': path,
+                                        'url pattern': url_pattern,
+                                        'parsed args': parsed_args,
+                                        'form class': form_class,
+                                        'default form data': data,
+                                        'post data': post_data,
+                                        'traceback': traceback.format_exc()
+                                    }))
+
+                                    if raise_every_time:
+                                        self.print_last_fail(failed)
+                                        raise
+                                    continue
+
+                                try:
+                                    response = self.client.post(path=path, data=post_data, follow=True)
+                                    self.assertEqual(response.status_code, 200)
+                                except Exception as e:
+                                    failed.append(OrderedDict({
+                                        'location': 'POST FORMSET',
+                                        'url name': path_name,
+                                        'url': path,
+                                        'url pattern': url_pattern,
+                                        'parsed args': parsed_args,
+                                        'form class': form_class,
+                                        'data': form_kwargs['data'],
+                                        'post data': post_data,
+                                        'form': form,
+                                        'traceback': traceback.format_exc()
+                                    }))
+                                    if raise_every_time:
+                                        self.print_last_fail(failed)
+                                        raise
+                                    continue
+                            else:
+                                raise
                         except Exception as e:
                             failed.append(OrderedDict({
                                 'location': 'POST',
@@ -1185,7 +1262,7 @@ class GenericTestMixin(object):
 
 
                         if issubclass(view_class, (CreateView, UpdateView, DeleteView)):
-                            obj_count_after = view_class.model.objects.all().count()
+                            obj_count_after = view_model.objects.all().count()
 
                             try:
                                 if issubclass(view_class, CreateView):
