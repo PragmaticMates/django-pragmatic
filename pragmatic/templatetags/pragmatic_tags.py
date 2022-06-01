@@ -46,7 +46,9 @@ def translate_url(context, lang, *args, **kwargs):
                 return context_object.get_absolute_url()
 
         # URL path
-        path = context['request'].path
+        # path = context['request'].path
+        request = context.get('request', None)
+        path = request.path if request else f'/{lang}/'
 
     return django_translate_url(path, lang)
 
