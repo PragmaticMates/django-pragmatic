@@ -43,6 +43,8 @@ from internationalflavor.countries import CountryField, CountryFormField
 from internationalflavor.countries.data import UN_RECOGNIZED_COUNTRIES
 from internationalflavor.vat_number import VATNumberField, VATNumberFormField
 
+from pragmatic import fields as pragmatic_fields
+
 
 class GenericBaseMixin(object):
     # USER_MODEL = User
@@ -142,6 +144,8 @@ class GenericBaseMixin(object):
             django_form_fields.BooleanField: True,
             django_filter_fields.ModelChoiceField: lambda f: f.queryset.first().id,
             django_filter_fields.ChoiceField: lambda f: list(f.choices)[-1][0],
+            django_filter_fields.MultipleChoiceField: lambda f: [list(f.choices)[-1][0]] if f.choices else ['{}'.format(f.label)],
+            django_filter_fields.RangeField: lambda f: [1,100],
             django_form_fields.NullBooleanField: True,
             gis_forms.PointField: 'POINT (0.1276 51.5072)',
             django_form_fields.DurationField: 1,
@@ -149,6 +153,7 @@ class GenericBaseMixin(object):
             django_form_fields.FloatField: lambda f: self.get_num_field_mock_value(f),
             django_form_fields.MultipleChoiceField: lambda f: [list(f.choices)[-1][0]] if f.choices else ['{}'.format(f.label)],
             django_form_fields.URLField: lambda f: f'www.google.com',
+            pragmatic_fields.AlwaysValidChoiceField: lambda f: list(f.choices)[-1][0] if f.choices else '{}'.format(f.label),
         }
 
     def import_modules_if_needed(self):
