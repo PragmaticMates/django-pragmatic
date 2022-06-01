@@ -1241,23 +1241,21 @@ class GenericTestMixin(object):
                                         raise
                                     continue
                             else:
-                                raise
-                        except Exception as e:
-                            failed.append(OrderedDict({
-                                'location': 'POST',
-                                'url name': path_name,
-                                'url': path,
-                                'url pattern': url_pattern,
-                                'parsed args': parsed_args,
-                                'form class': form_class,
-                                'data': form_kwargs['data'],
-                                'form': form,
-                                'traceback': traceback.format_exc()
-                            }))
-                            if raise_every_time:
-                                self.print_last_fail(failed)
-                                raise
-                            continue
+                                failed.append(OrderedDict({
+                                    'location': 'POST',
+                                    'url name': path_name,
+                                    'url': path,
+                                    'url pattern': url_pattern,
+                                    'parsed args': parsed_args,
+                                    'form class': form_class,
+                                    'data': form_kwargs['data'],
+                                    'form': form,
+                                    'traceback': traceback.format_exc()
+                                }))
+                                if raise_every_time:
+                                    self.print_last_fail(failed)
+                                    raise
+                                continue
 
 
 
