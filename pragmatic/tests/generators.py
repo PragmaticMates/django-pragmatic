@@ -51,7 +51,7 @@ class GenericBaseMixin(object):
     objs = OrderedDict()
     TEST_PASSWORD = 'testpassword'
     RAISE_EVERY_TIME = False
-    IGNORE_MODEL_FIELDS = []
+    IGNORE_MODEL_FIELDS = {}
     RUN_ONLY_THESE_URL_NAMES = []  # for debug purposes to save time
     RUN_URL_NAMES_CONTAINING = []
     IGNORE_URL_NAMES_CONTAINING = []
@@ -570,11 +570,12 @@ class GenericBaseMixin(object):
     def generate_model_field_values(self, model, field_values={}):
         not_related_fields = self.get_models_fields(model, related=False)
         related_fields = self.get_models_fields(model, related=True)
+        ignore_model_fields = self.IGNORE_MODEL_FIELDS.get(model, [])
         field_values = dict(field_values)
         m2m_values = {}
 
         for field in not_related_fields:
-            if field.name not in self.IGNORE_MODEL_FIELDS and field.name not in field_values and (not isinstance(field, ManyToManyField)):
+            if field.name not in ignore_model_fields and field.name not in field_values and (not isinstance(field, ManyToManyField)):
                 field_value = field.default
 
                 if inspect.isclass(field.default) and issubclass(field.default,
@@ -599,7 +600,7 @@ class GenericBaseMixin(object):
                 if field.name in field_values:
                     m2m_values[field.name] = field_values[field.name]
                     del field_values[field.name]
-            elif field.name not in self.IGNORE_MODEL_FIELDS and field.name not in field_values and field.related_model.objects.exists():
+            elif field.name not in ignore_model_fields and field.name not in field_values and field.related_model.objects.exists():
                 field_value = field.default
 
                 if inspect.isclass(field.default) and issubclass(field.default,
@@ -864,7 +865,7 @@ class GenericTestMixin(object):
             for path_params in module_params:
                 # print(path_params)
                 app_name = path_params['app_name']
-                path_name = path_params['path_name']
+                path = path_name = path_params['path_name']
                 # path_namespace, path_name = path_params['path_name'].split(':')
 
                 namespaces = [namespace for namespace, namespace_path_names in self.get_url_namespace_map().items() if
@@ -934,7 +935,7 @@ class GenericTestMixin(object):
                             else:
                                 type, name = arg.split(':') if ':' in arg else ('int', arg)
 
-                                if type not in ['int', 'str']:
+                                if type not in ['int', 'str', 'slug']:
                                     failed.append(OrderedDict({
                                         'location': 'URL ARG TYPE',
                                         'url name': path_name,
