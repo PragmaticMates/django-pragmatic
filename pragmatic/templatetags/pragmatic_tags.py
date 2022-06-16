@@ -3,6 +3,7 @@ import json
 import os
 import re
 import urllib
+from dateutil.relativedelta import relativedelta
 from django import template
 from django.conf import settings
 from django.core.serializers.json import DjangoJSONEncoder
@@ -635,6 +636,11 @@ def order_by(queryset, order_by):
 @register.filter
 def add_days(days):
     return now() + datetime.timedelta(days=days)
+
+
+@register.filter
+def add_months(months):
+    return now() + relativedelta(months=months)
 
 
 @register.filter(is_safe=False)
