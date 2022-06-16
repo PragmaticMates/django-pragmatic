@@ -3,7 +3,6 @@ import json
 import os
 import re
 import urllib
-from dateutil.relativedelta import relativedelta
 from django import template
 from django.conf import settings
 from django.core.serializers.json import DjangoJSONEncoder
@@ -640,6 +639,7 @@ def add_days(days):
 
 @register.filter
 def add_months(months):
+    from dateutil.relativedelta import relativedelta
     return now() + relativedelta(months=months)
 
 
