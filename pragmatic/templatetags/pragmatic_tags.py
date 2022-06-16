@@ -637,6 +637,12 @@ def add_days(days):
     return now() + datetime.timedelta(days=days)
 
 
+@register.filter
+def add_months(months):
+    from dateutil.relativedelta import relativedelta
+    return now() + relativedelta(months=months)
+
+
 @register.filter(is_safe=False)
 def concat(value, arg):
     """Add the arg to the value."""
