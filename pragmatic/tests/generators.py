@@ -909,11 +909,15 @@ class GenericTestMixin(object):
                 params_maps = self.url_params_map.get(path_name, {'default': {}})
 
                 for map_name, params_map in params_maps.items():
-                    parsed_args = params_map.get('args', []) if args else []
+                    parsed_args = params_map.get('args', None)
                     view_class = path_params['view_class']
 
-                    if len(params_maps) > 1 and parsed_args and len(args) != len(parsed_args):
+                    if len(params_maps) > 1 and parsed_args is not None and len(args) != len(parsed_args):
+                        # when there are mmultiple params maps provided match by arguments length
                         continue
+
+                    if parsed_args is None or not args:
+                        parsed_args = []
 
                     if args and not parsed_args:
                         params_map['parsed'] = []
@@ -950,13 +954,17 @@ class GenericTestMixin(object):
                                     continue
 
                                 if name.endswith('_pk'):
-                                    matching_fields = [('pk', model) for model in models if
-                                                       name == '{}_pk'.format(model._meta.label_lower.split(".")[-1])]
+                                    # model name
+                                    matching_fields = [('pk', model) for model in models if name == '{}_pk'.format(model._meta.label_lower.split(".")[-1])]
+
+                                    if len(matching_fields) != 1:
+                                        # match field  model
+                                        matching_fields = [('pk', model) for model in models if name == '{}_pk'.format(model._meta.verbose_name.lower().replace(' ', '_'))]
+
                                 else:
                                     # full name and type match
                                     matching_fields = [(field, model) for field, model in fields if
-                                                       field.name == name and isinstance(field,
-                                                                                         IntegerField if type == 'int' else (CharField, BooleanField))]
+                                                       field.name == name and isinstance(field, IntegerField if type == 'int' else (CharField, BooleanField))]
 
                                     if len(matching_fields) > 1:
                                         # match field  model
@@ -1072,9 +1080,12 @@ class GenericTestMixin(object):
                             continue
 
                         if hasattr(view_class, 'sorting_options'):  # and isinstance(view_class.sorting_options, dict):
-                            sorting_options = params_map.get('sorting_options', view_class.sorting_options)
+                            sorting_options = params_map.get('sorting_options', [])
 
-                            for sorting, label in sorting_options.items():
+                            if not sorting_options:
+                                sorting_options = view_class.sorting_options.keys()
+
+                            for sorting in sorting_options:
                                 data['sorting'] = sorting
 
                                 try:
@@ -1262,8 +1273,22 @@ class GenericTestMixin(object):
                                     self.print_last_fail(failed)
                                     raise
                                 continue
-
-
+                        except Exception as e:
+                            failed.append(OrderedDict({
+                                'location': 'POST',
+                                'url name': path_name,
+                                'url': path,
+                                'url pattern': url_pattern,
+                                'parsed args': parsed_args,
+                                'form class': form_class,
+                                'data': form_kwargs['data'],
+                                'form': form,
+                                'traceback': traceback.format_exc()
+                            }))
+                            if raise_every_time:
+                                self.print_last_fail(failed)
+                                raise
+                            continue
 
                         if issubclass(view_class, (CreateView, UpdateView, DeleteView)):
                             obj_count_after = view_model.objects.all().count()
