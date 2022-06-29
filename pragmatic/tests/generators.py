@@ -26,7 +26,7 @@ from django.contrib.postgres import forms as postgres_forms
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.validators import MinValueValidator, MaxValueValidator
-from django.db import transaction
+from django.db import transaction, IntegrityError
 from django.db.models import NOT_PROVIDED, BooleanField, TextField, CharField, SlugField, EmailField, DateTimeField, \
     DateField, FileField, PositiveSmallIntegerField, DecimalField, IntegerField, QuerySet, PositiveIntegerField, \
     SmallIntegerField, BigIntegerField, FloatField, ImageField, GenericIPAddressField, JSONField, URLField
@@ -1152,83 +1152,49 @@ class GenericTestMixin(object):
 
                     # POST url
                     if path_name not in self.GET_ONLY_URLS and getattr(view_class, 'form_class', None):
-                        form_class = view_class.form_class
-                        view_model = view_class.model if hasattr(view_class, 'model') else form_class.model if hasattr(form_class, 'model') else None
-                        form_kwargs = params_map.get('form_kwargs', self.generate_func_args(form_class.__init__))
-                        form_kwargs = {key: value(self) if callable(value) else value for key,value in form_kwargs.items()}
-                        form_kwargs['data'] = data
-                        init_form_kwargs = self.init_form_kwargs(form_class)
-                        form = None
-
                         try:
-                            form = form_class(**init_form_kwargs)
-                        except Exception as e:
-                            if not isinstance(form, form_class) or not hasattr(form, 'fields'):
-                                # as long as there is form instance with fields its enough to generate data
-                                failed.append(OrderedDict({
-                                    'location': 'POST FORM INIT',
-                                    'url name': path_name,
-                                    'url': path,
-                                    'url pattern': url_pattern,
-                                    'parsed args': parsed_args,
-                                    'form class': form_class,
-                                    'form kwargs': init_form_kwargs,
-                                    'traceback': traceback.format_exc()
-                                }))
-                                if raise_every_time:
-                                    self.print_last_fail(failed)
-                                    raise
-                                continue
-
-                        query_dict_data = QueryDict('', mutable=True)
-
-                        try:
-                            query_dict_data.update(self.generate_form_data(form, data))
-                        except Exception as e:
-                            failed.append(OrderedDict({
-                                'location': 'POST GENERATING FORM DATA',
-                                'url name': path_name,
-                                'url': path,
-                                'url pattern': url_pattern,
-                                'parsed args': parsed_args,
-                                'form class': form_class,
-                                'default form data': data,
-                                'traceback': traceback.format_exc()
-                            }))
-
-                            if raise_every_time:
-                                self.print_last_fail(failed)
-                                raise
-                            continue
-
-                        if not view_model:
-                            continue
-
-                        form_kwargs['data'] = query_dict_data
-                        obj_count_before = 0
-
-                        if issubclass(view_class, (CreateView, UpdateView, DeleteView)):
-                            obj_count_before = view_model.objects.all().count()
-
-                        try:
-                            response = self.client.post(path=path, data=form_kwargs['data'], follow=True)
-                            self.assertEqual(response.status_code, 200)
-                        except ValidationError as e:
-                            if e.message == 'ManagementForm data is missing or has been tampered with':
-                                post_data = QueryDict('', mutable=True)
+                            with transaction.atomic():
+                                form_class = view_class.form_class
+                                view_model = view_class.model if hasattr(view_class, 'model') else form_class.model if hasattr(form_class, 'model') else None
+                                form_kwargs = params_map.get('form_kwargs', self.generate_func_args(form_class.__init__))
+                                form_kwargs = {key: value(self) if callable(value) else value for key,value in form_kwargs.items()}
+                                form_kwargs['data'] = data
+                                init_form_kwargs = self.init_form_kwargs(form_class)
+                                form = None
 
                                 try:
-                                    post_data.update(self.create_formset_post_data(get_response, data))
+                                    form = form_class(**init_form_kwargs)
+                                except Exception as e:
+                                    if not isinstance(form, form_class) or not hasattr(form, 'fields'):
+                                        # as long as there is form instance with fields its enough to generate data
+                                        failed.append(OrderedDict({
+                                            'location': 'POST FORM INIT',
+                                            'url name': path_name,
+                                            'url': path,
+                                            'url pattern': url_pattern,
+                                            'parsed args': parsed_args,
+                                            'form class': form_class,
+                                            'form kwargs': init_form_kwargs,
+                                            'traceback': traceback.format_exc()
+                                        }))
+                                        if raise_every_time:
+                                            self.print_last_fail(failed)
+                                            raise
+                                        continue
+
+                                query_dict_data = QueryDict('', mutable=True)
+
+                                try:
+                                    query_dict_data.update(self.generate_form_data(form, data))
                                 except Exception as e:
                                     failed.append(OrderedDict({
-                                        'location': 'POST GENERATING FORMSET DATA',
+                                        'location': 'POST GENERATING FORM DATA',
                                         'url name': path_name,
                                         'url': path,
                                         'url pattern': url_pattern,
                                         'parsed args': parsed_args,
                                         'form class': form_class,
                                         'default form data': data,
-                                        'post data': post_data,
                                         'traceback': traceback.format_exc()
                                     }))
 
@@ -1237,19 +1203,87 @@ class GenericTestMixin(object):
                                         raise
                                     continue
 
+                                if not view_model:
+                                    continue
+
+                                form_kwargs['data'] = query_dict_data
+                                obj_count_before = 0
+
+                                if issubclass(view_class, (CreateView, UpdateView, DeleteView)):
+                                    obj_count_before = view_model.objects.all().count()
+
                                 try:
-                                    response = self.client.post(path=path, data=post_data, follow=True)
+                                    response = self.client.post(path=path, data=form_kwargs['data'], follow=True)
                                     self.assertEqual(response.status_code, 200)
+                                except ValidationError as e:
+                                    if e.message == 'ManagementForm data is missing or has been tampered with':
+                                        post_data = QueryDict('', mutable=True)
+
+                                        try:
+                                            post_data.update(self.create_formset_post_data(get_response, data))
+                                        except Exception as e:
+                                            failed.append(OrderedDict({
+                                                'location': 'POST GENERATING FORMSET DATA',
+                                                'url name': path_name,
+                                                'url': path,
+                                                'url pattern': url_pattern,
+                                                'parsed args': parsed_args,
+                                                'form class': form_class,
+                                                'default form data': data,
+                                                'post data': post_data,
+                                                'traceback': traceback.format_exc()
+                                            }))
+
+                                            if raise_every_time:
+                                                self.print_last_fail(failed)
+                                                raise
+                                            continue
+
+                                        try:
+                                            response = self.client.post(path=path, data=post_data, follow=True)
+                                            self.assertEqual(response.status_code, 200)
+                                        except Exception as e:
+                                            failed.append(OrderedDict({
+                                                'location': 'POST FORMSET',
+                                                'url name': path_name,
+                                                'url': path,
+                                                'url pattern': url_pattern,
+                                                'parsed args': parsed_args,
+                                                'form class': form_class,
+                                                'data': form_kwargs['data'],
+                                                'post data': post_data,
+                                                'form': form,
+                                                'traceback': traceback.format_exc()
+                                            }))
+                                            if raise_every_time:
+                                                self.print_last_fail(failed)
+                                                raise
+                                            continue
+                                    else:
+                                        failed.append(OrderedDict({
+                                            'location': 'POST',
+                                            'url name': path_name,
+                                            'url': path,
+                                            'url pattern': url_pattern,
+                                            'parsed args': parsed_args,
+                                            'form class': form_class,
+                                            'data': form_kwargs['data'],
+                                            'form': form,
+                                            'traceback': traceback.format_exc()
+                                        }))
+                                        if raise_every_time:
+                                            self.print_last_fail(failed)
+                                            raise
+                                        continue
                                 except Exception as e:
                                     failed.append(OrderedDict({
-                                        'location': 'POST FORMSET',
+                                        'location': 'POST',
                                         'url name': path_name,
                                         'url': path,
                                         'url pattern': url_pattern,
                                         'parsed args': parsed_args,
                                         'form class': form_class,
                                         'data': form_kwargs['data'],
-                                        'post data': post_data,
                                         'form': form,
                                         'traceback': traceback.format_exc()
                                     }))
@@ -1257,77 +1291,54 @@ class GenericTestMixin(object):
                                         self.print_last_fail(failed)
                                         raise
                                     continue
-                            else:
-                                failed.append(OrderedDict({
-                                    'location': 'POST',
-                                    'url name': path_name,
-                                    'url': path,
-                                    'url pattern': url_pattern,
-                                    'parsed args': parsed_args,
-                                    'form class': form_class,
-                                    'data': form_kwargs['data'],
-                                    'form': form,
-                                    'traceback': traceback.format_exc()
-                                }))
-                                if raise_every_time:
-                                    self.print_last_fail(failed)
-                                    raise
-                                continue
-                        except Exception as e:
-                            failed.append(OrderedDict({
-                                'location': 'POST',
-                                'url name': path_name,
-                                'url': path,
-                                'url pattern': url_pattern,
-                                'parsed args': parsed_args,
-                                'form class': form_class,
-                                'data': form_kwargs['data'],
-                                'form': form,
-                                'traceback': traceback.format_exc()
-                            }))
-                            if raise_every_time:
-                                self.print_last_fail(failed)
+
+                                if issubclass(view_class, (CreateView, UpdateView, DeleteView)):
+                                    obj_count_after = view_model.objects.all().count()
+
+                                    try:
+                                        if issubclass(view_class, CreateView):
+                                            self.assertEqual(obj_count_after, obj_count_before + 1)
+                                        elif issubclass(view_class, UpdateView):
+                                            self.assertEqual(obj_count_after, obj_count_before)
+                                        elif issubclass(view_class, DeleteView):
+                                            self.assertEqual(obj_count_after, obj_count_before - 1)
+                                            # recreate obj
+                                            self.generate_model_objs(view_class.model)
+
+                                    except Exception as e:
+                                        # for key, value in init_form_kwargs.items():
+                                        #     if key not in form_kwargs:
+                                        #         form_kwargs[key] = value
+
+                                        # form = form_class(**form_kwargs)
+                                        form = response.context_data.get('form', None)
+
+                                        failed.append(OrderedDict({
+                                            'location': 'POST COUNT',
+                                            'url name': path_name,
+                                            'url': path,
+                                            'url pattern': url_pattern,
+                                            'parsed args': parsed_args,
+                                            'view model': view_class.model,
+                                            'form class': form_class,
+                                            # 'form': form,
+                                            'form valid': form.is_valid() if form else None,
+                                            'form errors': form.errors if form else None,
+                                            'data': form_kwargs['data'],
+                                            'traceback': traceback.format_exc()
+                                        }))
+                                        if raise_every_time:
+                                            self.print_last_fail(failed)
+                                            raise
+
+                                # rollback post action
+                                raise IntegrityError('No problem')
+
+                        except IntegrityError as e:
+                            if e.args[0] != 'No problem':
                                 raise
-                            continue
-
-                        if issubclass(view_class, (CreateView, UpdateView, DeleteView)):
-                            obj_count_after = view_model.objects.all().count()
-
-                            try:
-                                if issubclass(view_class, CreateView):
-                                    self.assertEqual(obj_count_after, obj_count_before + 1)
-                                elif issubclass(view_class, UpdateView):
-                                    self.assertEqual(obj_count_after, obj_count_before)
-                                elif issubclass(view_class, DeleteView):
-                                    self.assertEqual(obj_count_after, obj_count_before - 1)
-                                    # recreate obj
-                                    self.generate_model_objs(view_class.model)
-
-                            except Exception as e:
-                                # for key, value in init_form_kwargs.items():
-                                #     if key not in form_kwargs:
-                                #         form_kwargs[key] = value
-
-                                # form = form_class(**form_kwargs)
-                                form = response.context_data.get('form', None)
-
-                                failed.append(OrderedDict({
-                                    'location': 'POST COUNT',
-                                    'url name': path_name,
-                                    'url': path,
-                                    'url pattern': url_pattern,
-                                    'parsed args': parsed_args,
-                                    'view model': view_class.model,
-                                    'form class': form_class,
-                                    # 'form': form,
-                                    'form valid': form.is_valid() if form else None,
-                                    'form errors': form.errors if form else None,
-                                    'data': form_kwargs['data'],
-                                    'traceback': traceback.format_exc()
-                                }))
-                                if raise_every_time:
-                                    self.print_last_fail(failed)
-                                    raise
+                        except Exception:
+                            raise
 
         if failed:
             # append failed count at the end of error list
