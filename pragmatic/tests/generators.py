@@ -1347,7 +1347,7 @@ class GenericTestMixin(object):
         self.assertFalse(failed, msg=pformat(failed, indent=4))
 
     def test_querysets(self):
-        models_querysets = [model.objects.all() for model in self.get_models()]
+        models_querysets = [model._default_manager.all() for model in self.get_models()]
         failed = []
 
         for qs in models_querysets:
