@@ -1376,6 +1376,7 @@ class GenericTestMixin(object):
                         except Exception as e:
                             failed.append([{
                                 'location': 'DEFAULT KWARGS',
+                                'model': qs.model,
                                 'queryset method': '{}.{}'.format(qs_class_label, name),
                                 'kwargs': kwargs,
                                 'traceback': traceback.format_exc(),
@@ -1387,6 +1388,7 @@ class GenericTestMixin(object):
                         except Exception as e:
                             failed.append([{
                                 'location': 'NO KWARGS',
+                                'model': qs.model,
                                 'queryset method': '{}.{}'.format(qs_class_label, name),
                                 'traceback': traceback.format_exc(),
                             }])
@@ -1398,6 +1400,7 @@ class GenericTestMixin(object):
                         except Exception as e:
                             failed.append([{
                                 'location': 'GENERATING KWARGS',
+                                'model': qs.model,
                                 'queryset method': '{}.{}'.format(qs_class_label, name),
                                 'traceback': traceback.format_exc(),
                             }])
@@ -1407,6 +1410,7 @@ class GenericTestMixin(object):
                             except Exception as e:
                                 failed.append([{
                                     'location': 'GENERATED KWARGS',
+                                    'model': qs.model,
                                     'queryset method': '{}.{}'.format(qs_class_label, name),
                                     'kwargs': kwargs,
                                     'traceback': traceback.format_exc(),
