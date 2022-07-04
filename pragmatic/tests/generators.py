@@ -272,11 +272,13 @@ class GenericBaseMixin(object):
         # 1. model names and assigns generated objs acordingly,
         # 2. field names of instance.model if exists such that instance.func
         models = {model._meta.label_lower.split('.')[-1]: model for model in self.get_models()}
-        result_kwargs = {}
+        result_kwargs = {**default}
+
         try:
             for name, value in kwargs.items():
                 if name in default:
-                    result_kwargs[name] = default[name]
+                    # result_kwargs[name] = default[name]
+                    pass
                 elif name == 'email':
                     result_kwargs[name] = self.get_generated_email()
                 else:
@@ -793,7 +795,11 @@ class GenericBaseMixin(object):
         return {}.get(form_class, self.generate_func_args(form_class.__init__, default))
 
     def init_filter_kwargs(self, filter_class, default={}):
-        return self.generate_func_args(filter_class.__init__, default=default)
+        '''{
+            UserFitler: {'queryset': User.objects.all()}
+        }
+        '''
+        return {}.get(filter_class, self.generate_func_args(filter_class.__init__, default=default))
 
     def setUp(self):
         super(GenericBaseMixin, self).setUp()
@@ -1479,7 +1485,7 @@ class GenericTestMixin(object):
 
 
                 try:
-                    queryset = params_map.get('queryset', filter_class._meta.model.objects.all() if filter_class._meta.model else None)
+                    queryset = init_kwargs.get('queryset', filter_class._meta.model._default_manager.all() if filter_class._meta.model else None)
                 except Exception as e:
                     failed.append(OrderedDict({
                         'location': 'FILTER QUERYSET',
