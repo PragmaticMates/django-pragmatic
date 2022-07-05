@@ -19,7 +19,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.gis.db import models as gis_models
 from django.contrib.gis import forms as gis_forms
-from django.contrib.gis.geos import Point
+from django.contrib.gis.geos import Point, MultiPoint
 from django.contrib.messages.storage.fallback import FallbackStorage
 from django.contrib.postgres import fields as postgres_fields
 from django.contrib.postgres import forms as postgres_forms
@@ -35,13 +35,11 @@ from django_filters import fields as django_filter_fields, FilterSet
 from django.forms import fields as django_form_fields
 from django.forms import models as django_form_models
 from django.http import QueryDict
-from django.test import TestCase, RequestFactory
+from django.test import RequestFactory
 from django.urls import reverse
 from django.utils.timezone import now
 from django.views.generic import CreateView, UpdateView, DeleteView
-from internationalflavor.countries import CountryField, CountryFormField
-from internationalflavor.countries.data import UN_RECOGNIZED_COUNTRIES
-from internationalflavor.vat_number import VATNumberField, VATNumberFormField
+import internationalflavor
 
 from pragmatic import fields as pragmatic_fields
 
@@ -101,9 +99,10 @@ class GenericBaseMixin(object):
             CharField: lambda f: list(f.choices)[0][0] if f.choices else '{}_{}'.format(f.model._meta.label_lower, f.name)[:f.max_length],
             SlugField: lambda f: '{}_{}'.format(f.name, self.next_id(f.model)),
             EmailField: lambda f: '{}.{}@example.com'.format(f.model._meta.label_lower, self.next_id(f.model)),
-            CountryField: 'LU',
+            internationalflavor.countries.CountryField: 'LU',
             gis_models.PointField: Point(0.1276, 51.5072),
-            VATNumberField: lambda f: 'LU{}'.format(random.randint(10000000, 99999999)),  # 'GB904447273',
+            gis_models.MultiPointField: MultiPoint(Point(0.1276, 51.5072), Point(0.1276, 51.5072)),
+            internationalflavor.vat_number.VATNumberField: lambda f: 'LU{}'.format(random.randint(10000000, 99999999)),  # 'GB904447273',
             DateTimeField: now(),
             DateField: now().date(),
             postgres_fields.DateTimeRangeField: (now(), now() + timedelta(days=1)),
@@ -119,20 +118,26 @@ class GenericBaseMixin(object):
             ImageField: self.get_image_file_mock(),
             GenericIPAddressField: '127.0.0.1',
             postgres_fields.JSONField: {},
+            postgres_fields.ArrayField: lambda f: [self.default_field_map[f.base_field.__class__](f.base_field)],
             JSONField: {},
             URLField: lambda f: f'www.google.com',
+            internationalflavor.iban.IBANField: 'LU28 0019 4006 4475 0000',
         }
 
     @property
     def default_form_field_map(self):
         # values can be callables with with field variable
         return {
+            django_filter_fields.ModelChoiceField: lambda f: f.queryset.first().id,
+            django_filter_fields.ModelMultipleChoiceField: lambda f: f.queryset.first().id,
+            django_filter_fields.MultipleChoiceField: lambda f: [list(f.choices)[-1][0]] if f.choices else ['{}'.format(f.label)],
+            django_filter_fields.ChoiceField: lambda f: list(f.choices)[-1][0],
+            django_filter_fields.RangeField: lambda f: [1, 100],
+            django_filter_fields.DateRangeField: lambda f: (now().date(), now() + timedelta(days=1)),
             django_form_fields.EmailField: lambda f: self.get_new_email(),
             django_form_fields.CharField: lambda f: '{}_{}'.format(f.label, random.randint(1, 999))[:f.max_length],
-            django_form_fields.TypedChoiceField: lambda f: list(f.choices)[-1][0] if f.choices else '{}'.format(f.label)[:f.max_length],
-            django_form_fields.ChoiceField: lambda f: list(f.choices)[-1][0] if f.choices else '{}'.format(f.label)[:f.max_length],
-            CountryFormField: 'LU',  # random.choice(UN_RECOGNIZED_COUNTRIES),
-            VATNumberFormField: lambda f: 'LU{}'.format(random.randint(10000000, 99999999)),  # 'GB904447273',
+            django_form_fields.TypedChoiceField: lambda f: list(f.choices)[-1][1][0][0] if f.choices and isinstance(list(f.choices)[-1][1], list) else list(f.choices)[-1][0] if f.choices else '{}'.format(f.label)[:f.max_length],
+            django_form_fields.ChoiceField: lambda f: list(f.choices)[-1][1][0][0] if f.choices and isinstance(list(f.choices)[-1][1], list) else list(f.choices)[-1][0] if f.choices else '{}'.format(f.label)[:f.max_length],
             django_form_fields.ImageField: self.get_image_file_mock(),
             django_form_fields.FileField: self.get_pdf_file_mock(),
             django_form_fields.DateTimeField: lambda f: now().strftime(list(f.input_formats)[-1]) if hasattr(f, 'input_formats') else now(),
@@ -142,18 +147,24 @@ class GenericBaseMixin(object):
             django_form_models.ModelMultipleChoiceField: lambda f: [f.queryset.first().id],
             django_form_models.ModelChoiceField: lambda f: f.queryset.first().id,
             django_form_fields.BooleanField: True,
-            django_filter_fields.ModelChoiceField: lambda f: f.queryset.first().id,
-            django_filter_fields.ChoiceField: lambda f: list(f.choices)[-1][0],
-            django_filter_fields.MultipleChoiceField: lambda f: [list(f.choices)[-1][0]] if f.choices else ['{}'.format(f.label)],
-            django_filter_fields.RangeField: lambda f: [1,100],
             django_form_fields.NullBooleanField: True,
-            gis_forms.PointField: 'POINT (0.1276 51.5072)',
-            django_form_fields.DurationField: 1,
-            postgres_forms.SimpleArrayField: lambda f: [self.default_form_field_map[f.base_field.__class__](f.base_field)],
-            django_form_fields.FloatField: lambda f: self.get_num_field_mock_value(f),
             django_form_fields.MultipleChoiceField: lambda f: [list(f.choices)[-1][0]] if f.choices else ['{}'.format(f.label)],
             django_form_fields.URLField: lambda f: f'www.google.com',
+            django_form_fields.DurationField: 1,
+            django_form_fields.JSONField: '',
+            django_form_fields.SplitDateTimeField: lambda f: [now().date(), now().time()],
+            django_form_fields.GenericIPAddressField: '127.0.0.1',
+            django_form_fields.FloatField: lambda f: self.get_num_field_mock_value(f),
+            gis_forms.PointField: 'POINT (0.1276 51.5072)',
+            postgres_forms.HStoreField: '',
+            postgres_forms.SimpleArrayField: lambda f: [self.default_form_field_map[f.base_field.__class__](f.base_field)],
+            postgres_forms.DateTimeRangeField: lambda f: [now().strftime(list(f.input_formats)[-1]) if hasattr(f, 'input_formats') else now(), now().strftime(list(f.input_formats)[-1]) if hasattr(f, 'input_formats') else now()],
             pragmatic_fields.AlwaysValidChoiceField: lambda f: list(f.choices)[-1][0] if f.choices else '{}'.format(f.label),
+            pragmatic_fields.AlwaysValidMultipleChoiceField: lambda f: f'{list(f.choices)[-1][0]}' if f.choices else '{}'.format(f.label),
+            pragmatic_fields.SliderField: lambda f: f'{f.min},{f.max}' if f.has_range else f'{f.min}',
+            internationalflavor.countries.CountryFormField: 'LU',  # random.choice(UN_RECOGNIZED_COUNTRIES),
+            internationalflavor.iban.IBANFormField: 'LU28 0019 4006 4475 0000',
+            internationalflavor.vat_number.VATNumberFormField: lambda f: 'LU{}'.format(random.randint(10000000, 99999999)),  # 'GB904447273',
         }
 
     def import_modules_if_needed(self):
