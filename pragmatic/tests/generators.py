@@ -19,14 +19,14 @@ from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.gis.db import models as gis_models
 from django.contrib.gis import forms as gis_forms
-from django.contrib.gis.geos import Point
+from django.contrib.gis.geos import Point, MultiPoint
 from django.contrib.messages.storage.fallback import FallbackStorage
 from django.contrib.postgres import fields as postgres_fields
 from django.contrib.postgres import forms as postgres_forms
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.validators import MinValueValidator, MaxValueValidator
-from django.db import transaction
+from django.db import transaction, IntegrityError
 from django.db.models import NOT_PROVIDED, BooleanField, TextField, CharField, SlugField, EmailField, DateTimeField, \
     DateField, FileField, PositiveSmallIntegerField, DecimalField, IntegerField, QuerySet, PositiveIntegerField, \
     SmallIntegerField, BigIntegerField, FloatField, ImageField, GenericIPAddressField, JSONField, URLField
@@ -35,13 +35,11 @@ from django_filters import fields as django_filter_fields, FilterSet
 from django.forms import fields as django_form_fields
 from django.forms import models as django_form_models
 from django.http import QueryDict
-from django.test import TestCase, RequestFactory
+from django.test import RequestFactory
 from django.urls import reverse
 from django.utils.timezone import now
 from django.views.generic import CreateView, UpdateView, DeleteView
-from internationalflavor.countries import CountryField, CountryFormField
-from internationalflavor.countries.data import UN_RECOGNIZED_COUNTRIES
-from internationalflavor.vat_number import VATNumberField, VATNumberFormField
+import internationalflavor
 
 from pragmatic import fields as pragmatic_fields
 
@@ -51,7 +49,7 @@ class GenericBaseMixin(object):
     objs = OrderedDict()
     TEST_PASSWORD = 'testpassword'
     RAISE_EVERY_TIME = False
-    IGNORE_MODEL_FIELDS = []
+    IGNORE_MODEL_FIELDS = {}
     RUN_ONLY_THESE_URL_NAMES = []  # for debug purposes to save time
     RUN_URL_NAMES_CONTAINING = []
     IGNORE_URL_NAMES_CONTAINING = []
@@ -101,9 +99,10 @@ class GenericBaseMixin(object):
             CharField: lambda f: list(f.choices)[0][0] if f.choices else '{}_{}'.format(f.model._meta.label_lower, f.name)[:f.max_length],
             SlugField: lambda f: '{}_{}'.format(f.name, self.next_id(f.model)),
             EmailField: lambda f: '{}.{}@example.com'.format(f.model._meta.label_lower, self.next_id(f.model)),
-            CountryField: 'LU',
+            internationalflavor.countries.CountryField: 'LU',
             gis_models.PointField: Point(0.1276, 51.5072),
-            VATNumberField: lambda f: 'LU{}'.format(random.randint(10000000, 99999999)),  # 'GB904447273',
+            gis_models.MultiPointField: MultiPoint(Point(0.1276, 51.5072), Point(0.1276, 51.5072)),
+            internationalflavor.vat_number.VATNumberField: lambda f: 'LU{}'.format(random.randint(10000000, 99999999)),  # 'GB904447273',
             DateTimeField: now(),
             DateField: now().date(),
             postgres_fields.DateTimeRangeField: (now(), now() + timedelta(days=1)),
@@ -119,20 +118,26 @@ class GenericBaseMixin(object):
             ImageField: self.get_image_file_mock(),
             GenericIPAddressField: '127.0.0.1',
             postgres_fields.JSONField: {},
+            postgres_fields.ArrayField: lambda f: [self.default_field_map[f.base_field.__class__](f.base_field)],
             JSONField: {},
             URLField: lambda f: f'www.google.com',
+            internationalflavor.iban.IBANField: 'LU28 0019 4006 4475 0000',
         }
 
     @property
     def default_form_field_map(self):
         # values can be callables with with field variable
         return {
+            django_filter_fields.ModelChoiceField: lambda f: f.queryset.first().id,
+            django_filter_fields.ModelMultipleChoiceField: lambda f: f.queryset.first().id,
+            django_filter_fields.MultipleChoiceField: lambda f: [list(f.choices)[-1][0]] if f.choices else ['{}'.format(f.label)],
+            django_filter_fields.ChoiceField: lambda f: list(f.choices)[-1][0],
+            django_filter_fields.RangeField: lambda f: [1, 100],
+            django_filter_fields.DateRangeField: lambda f: (now().date(), now() + timedelta(days=1)),
             django_form_fields.EmailField: lambda f: self.get_new_email(),
             django_form_fields.CharField: lambda f: '{}_{}'.format(f.label, random.randint(1, 999))[:f.max_length],
-            django_form_fields.TypedChoiceField: lambda f: list(f.choices)[-1][0] if f.choices else '{}'.format(f.label)[:f.max_length],
-            django_form_fields.ChoiceField: lambda f: list(f.choices)[-1][0] if f.choices else '{}'.format(f.label)[:f.max_length],
-            CountryFormField: 'LU',  # random.choice(UN_RECOGNIZED_COUNTRIES),
-            VATNumberFormField: lambda f: 'LU{}'.format(random.randint(10000000, 99999999)),  # 'GB904447273',
+            django_form_fields.TypedChoiceField: lambda f: list(f.choices)[-1][1][0][0] if f.choices and isinstance(list(f.choices)[-1][1], list) else list(f.choices)[-1][0] if f.choices else '{}'.format(f.label)[:f.max_length],
+            django_form_fields.ChoiceField: lambda f: list(f.choices)[-1][1][0][0] if f.choices and isinstance(list(f.choices)[-1][1], list) else list(f.choices)[-1][0] if f.choices else '{}'.format(f.label)[:f.max_length],
             django_form_fields.ImageField: self.get_image_file_mock(),
             django_form_fields.FileField: self.get_pdf_file_mock(),
             django_form_fields.DateTimeField: lambda f: now().strftime(list(f.input_formats)[-1]) if hasattr(f, 'input_formats') else now(),
@@ -142,18 +147,24 @@ class GenericBaseMixin(object):
             django_form_models.ModelMultipleChoiceField: lambda f: [f.queryset.first().id],
             django_form_models.ModelChoiceField: lambda f: f.queryset.first().id,
             django_form_fields.BooleanField: True,
-            django_filter_fields.ModelChoiceField: lambda f: f.queryset.first().id,
-            django_filter_fields.ChoiceField: lambda f: list(f.choices)[-1][0],
-            django_filter_fields.MultipleChoiceField: lambda f: [list(f.choices)[-1][0]] if f.choices else ['{}'.format(f.label)],
-            django_filter_fields.RangeField: lambda f: [1,100],
             django_form_fields.NullBooleanField: True,
-            gis_forms.PointField: 'POINT (0.1276 51.5072)',
-            django_form_fields.DurationField: 1,
-            postgres_forms.SimpleArrayField: lambda f: [self.default_form_field_map[f.base_field.__class__](f.base_field)],
-            django_form_fields.FloatField: lambda f: self.get_num_field_mock_value(f),
             django_form_fields.MultipleChoiceField: lambda f: [list(f.choices)[-1][0]] if f.choices else ['{}'.format(f.label)],
             django_form_fields.URLField: lambda f: f'www.google.com',
+            django_form_fields.DurationField: 1,
+            django_form_fields.JSONField: '',
+            django_form_fields.SplitDateTimeField: lambda f: [now().date(), now().time()],
+            django_form_fields.GenericIPAddressField: '127.0.0.1',
+            django_form_fields.FloatField: lambda f: self.get_num_field_mock_value(f),
+            gis_forms.PointField: 'POINT (0.1276 51.5072)',
+            postgres_forms.HStoreField: '',
+            postgres_forms.SimpleArrayField: lambda f: [self.default_form_field_map[f.base_field.__class__](f.base_field)],
+            postgres_forms.DateTimeRangeField: lambda f: [now().strftime(list(f.input_formats)[-1]) if hasattr(f, 'input_formats') else now(), now().strftime(list(f.input_formats)[-1]) if hasattr(f, 'input_formats') else now()],
             pragmatic_fields.AlwaysValidChoiceField: lambda f: list(f.choices)[-1][0] if f.choices else '{}'.format(f.label),
+            pragmatic_fields.AlwaysValidMultipleChoiceField: lambda f: f'{list(f.choices)[-1][0]}' if f.choices else '{}'.format(f.label),
+            pragmatic_fields.SliderField: lambda f: f'{f.min},{f.max}' if f.has_range else f'{f.min}',
+            internationalflavor.countries.CountryFormField: 'LU',  # random.choice(UN_RECOGNIZED_COUNTRIES),
+            internationalflavor.iban.IBANFormField: 'LU28 0019 4006 4475 0000',
+            internationalflavor.vat_number.VATNumberFormField: lambda f: 'LU{}'.format(random.randint(10000000, 99999999)),  # 'GB904447273',
         }
 
     def import_modules_if_needed(self):
@@ -272,11 +283,13 @@ class GenericBaseMixin(object):
         # 1. model names and assigns generated objs acordingly,
         # 2. field names of instance.model if exists such that instance.func
         models = {model._meta.label_lower.split('.')[-1]: model for model in self.get_models()}
-        result_kwargs = {}
+        result_kwargs = {**default}
+
         try:
             for name, value in kwargs.items():
                 if name in default:
-                    result_kwargs[name] = default[name]
+                    # result_kwargs[name] = default[name]
+                    pass
                 elif name == 'email':
                     result_kwargs[name] = self.get_generated_email()
                 else:
@@ -570,11 +583,12 @@ class GenericBaseMixin(object):
     def generate_model_field_values(self, model, field_values={}):
         not_related_fields = self.get_models_fields(model, related=False)
         related_fields = self.get_models_fields(model, related=True)
+        ignore_model_fields = self.IGNORE_MODEL_FIELDS.get(model, [])
         field_values = dict(field_values)
         m2m_values = {}
 
         for field in not_related_fields:
-            if field.name not in self.IGNORE_MODEL_FIELDS and field.name not in field_values and (not isinstance(field, ManyToManyField)):
+            if field.name not in ignore_model_fields and field.name not in field_values and (not isinstance(field, ManyToManyField)):
                 field_value = field.default
 
                 if inspect.isclass(field.default) and issubclass(field.default,
@@ -599,7 +613,7 @@ class GenericBaseMixin(object):
                 if field.name in field_values:
                     m2m_values[field.name] = field_values[field.name]
                     del field_values[field.name]
-            elif field.name not in self.IGNORE_MODEL_FIELDS and field.name not in field_values and field.related_model.objects.exists():
+            elif field.name not in ignore_model_fields and field.name not in field_values and field.related_model.objects.exists():
                 field_value = field.default
 
                 if inspect.isclass(field.default) and issubclass(field.default,
@@ -792,7 +806,11 @@ class GenericBaseMixin(object):
         return {}.get(form_class, self.generate_func_args(form_class.__init__, default))
 
     def init_filter_kwargs(self, filter_class, default={}):
-        return self.generate_func_args(filter_class.__init__, default=default)
+        '''{
+            UserFitler: {'queryset': User.objects.all()}
+        }
+        '''
+        return {}.get(filter_class, self.generate_func_args(filter_class.__init__, default=default))
 
     def setUp(self):
         super(GenericBaseMixin, self).setUp()
@@ -864,7 +882,7 @@ class GenericTestMixin(object):
             for path_params in module_params:
                 # print(path_params)
                 app_name = path_params['app_name']
-                path_name = path_params['path_name']
+                path = path_name = path_params['path_name']
                 # path_namespace, path_name = path_params['path_name'].split(':')
 
                 namespaces = [namespace for namespace, namespace_path_names in self.get_url_namespace_map().items() if
@@ -908,11 +926,15 @@ class GenericTestMixin(object):
                 params_maps = self.url_params_map.get(path_name, {'default': {}})
 
                 for map_name, params_map in params_maps.items():
-                    parsed_args = params_map.get('args', []) if args else []
+                    parsed_args = params_map.get('args', None)
                     view_class = path_params['view_class']
 
-                    if len(params_maps) > 1 and parsed_args and len(args) != len(parsed_args):
+                    if len(params_maps) > 1 and parsed_args is not None and len(args) != len(parsed_args):
+                        # when there are mmultiple params maps provided match by arguments length
                         continue
+
+                    if parsed_args is None or not args:
+                        parsed_args = []
 
                     if args and not parsed_args:
                         params_map['parsed'] = []
@@ -934,7 +956,7 @@ class GenericTestMixin(object):
                             else:
                                 type, name = arg.split(':') if ':' in arg else ('int', arg)
 
-                                if type not in ['int', 'str']:
+                                if type not in ['int', 'str', 'slug']:
                                     failed.append(OrderedDict({
                                         'location': 'URL ARG TYPE',
                                         'url name': path_name,
@@ -949,13 +971,17 @@ class GenericTestMixin(object):
                                     continue
 
                                 if name.endswith('_pk'):
-                                    matching_fields = [('pk', model) for model in models if
-                                                       name == '{}_pk'.format(model._meta.label_lower.split(".")[-1])]
+                                    # model name
+                                    matching_fields = [('pk', model) for model in models if name == '{}_pk'.format(model._meta.label_lower.split(".")[-1])]
+
+                                    if len(matching_fields) != 1:
+                                        # match field  model
+                                        matching_fields = [('pk', model) for model in models if name == '{}_pk'.format(model._meta.verbose_name.lower().replace(' ', '_'))]
+
                                 else:
                                     # full name and type match
                                     matching_fields = [(field, model) for field, model in fields if
-                                                       field.name == name and isinstance(field,
-                                                                                         IntegerField if type == 'int' else (CharField, BooleanField))]
+                                                       field.name == name and isinstance(field, IntegerField if type == 'int' else (CharField, BooleanField))]
 
                                     if len(matching_fields) > 1:
                                         # match field  model
@@ -1071,9 +1097,12 @@ class GenericTestMixin(object):
                             continue
 
                         if hasattr(view_class, 'sorting_options'):  # and isinstance(view_class.sorting_options, dict):
-                            sorting_options = params_map.get('sorting_options', view_class.sorting_options)
+                            sorting_options = params_map.get('sorting_options', [])
 
-                            for sorting, label in sorting_options.items():
+                            if not sorting_options:
+                                sorting_options = view_class.sorting_options.keys()
+
+                            for sorting in sorting_options:
                                 data['sorting'] = sorting
 
                                 try:
@@ -1140,83 +1169,49 @@ class GenericTestMixin(object):
 
                     # POST url
                     if path_name not in self.GET_ONLY_URLS and getattr(view_class, 'form_class', None):
-                        form_class = view_class.form_class
-                        view_model = view_class.model if hasattr(view_class, 'model') else form_class.model if hasattr(form_class, 'model') else None
-                        form_kwargs = params_map.get('form_kwargs', self.generate_func_args(form_class.__init__))
-                        form_kwargs = {key: value(self) if callable(value) else value for key,value in form_kwargs.items()}
-                        form_kwargs['data'] = data
-                        init_form_kwargs = self.init_form_kwargs(form_class)
-                        form = None
-
                         try:
-                            form = form_class(**init_form_kwargs)
-                        except Exception as e:
-                            if not isinstance(form, form_class) or not hasattr(form, 'fields'):
-                                # as long as there is form instance with fields its enough to generate data
-                                failed.append(OrderedDict({
-                                    'location': 'POST FORM INIT',
-                                    'url name': path_name,
-                                    'url': path,
-                                    'url pattern': url_pattern,
-                                    'parsed args': parsed_args,
-                                    'form class': form_class,
-                                    'form kwargs': init_form_kwargs,
-                                    'traceback': traceback.format_exc()
-                                }))
-                                if raise_every_time:
-                                    self.print_last_fail(failed)
-                                    raise
-                                continue
-
-                        query_dict_data = QueryDict('', mutable=True)
-
-                        try:
-                            query_dict_data.update(self.generate_form_data(form, data))
-                        except Exception as e:
-                            failed.append(OrderedDict({
-                                'location': 'POST GENERATING FORM DATA',
-                                'url name': path_name,
-                                'url': path,
-                                'url pattern': url_pattern,
-                                'parsed args': parsed_args,
-                                'form class': form_class,
-                                'default form data': data,
-                                'traceback': traceback.format_exc()
-                            }))
-
-                            if raise_every_time:
-                                self.print_last_fail(failed)
-                                raise
-                            continue
-
-                        if not view_model:
-                            continue
-
-                        form_kwargs['data'] = query_dict_data
-                        obj_count_before = 0
-
-                        if issubclass(view_class, (CreateView, UpdateView, DeleteView)):
-                            obj_count_before = view_model.objects.all().count()
-
-                        try:
-                            response = self.client.post(path=path, data=form_kwargs['data'], follow=True)
-                            self.assertEqual(response.status_code, 200)
-                        except ValidationError as e:
-                            if e.message == 'ManagementForm data is missing or has been tampered with':
-                                post_data = QueryDict('', mutable=True)
+                            with transaction.atomic():
+                                form_class = view_class.form_class
+                                view_model = view_class.model if hasattr(view_class, 'model') else form_class.model if hasattr(form_class, 'model') else None
+                                form_kwargs = params_map.get('form_kwargs', self.generate_func_args(form_class.__init__))
+                                form_kwargs = {key: value(self) if callable(value) else value for key,value in form_kwargs.items()}
+                                form_kwargs['data'] = data
+                                init_form_kwargs = self.init_form_kwargs(form_class)
+                                form = None
 
                                 try:
-                                    post_data.update(self.create_formset_post_data(get_response, data))
+                                    form = form_class(**init_form_kwargs)
+                                except Exception as e:
+                                    if not isinstance(form, form_class) or not hasattr(form, 'fields'):
+                                        # as long as there is form instance with fields its enough to generate data
+                                        failed.append(OrderedDict({
+                                            'location': 'POST FORM INIT',
+                                            'url name': path_name,
+                                            'url': path,
+                                            'url pattern': url_pattern,
+                                            'parsed args': parsed_args,
+                                            'form class': form_class,
+                                            'form kwargs': init_form_kwargs,
+                                            'traceback': traceback.format_exc()
+                                        }))
+                                        if raise_every_time:
+                                            self.print_last_fail(failed)
+                                            raise
+                                        continue
+
+                                query_dict_data = QueryDict('', mutable=True)
+
+                                try:
+                                    query_dict_data.update(self.generate_form_data(form, data))
                                 except Exception as e:
                                     failed.append(OrderedDict({
-                                        'location': 'POST GENERATING FORMSET DATA',
+                                        'location': 'POST GENERATING FORM DATA',
                                         'url name': path_name,
                                         'url': path,
                                         'url pattern': url_pattern,
                                         'parsed args': parsed_args,
                                         'form class': form_class,
                                         'default form data': data,
-                                        'post data': post_data,
                                         'traceback': traceback.format_exc()
                                     }))
 
@@ -1225,19 +1220,87 @@ class GenericTestMixin(object):
                                         raise
                                     continue
 
+                                if not view_model:
+                                    continue
+
+                                form_kwargs['data'] = query_dict_data
+                                obj_count_before = 0
+
+                                if issubclass(view_class, (CreateView, UpdateView, DeleteView)):
+                                    obj_count_before = view_model.objects.all().count()
+
                                 try:
-                                    response = self.client.post(path=path, data=post_data, follow=True)
+                                    response = self.client.post(path=path, data=form_kwargs['data'], follow=True)
                                     self.assertEqual(response.status_code, 200)
+                                except ValidationError as e:
+                                    if e.message == 'ManagementForm data is missing or has been tampered with':
+                                        post_data = QueryDict('', mutable=True)
+
+                                        try:
+                                            post_data.update(self.create_formset_post_data(get_response, data))
+                                        except Exception as e:
+                                            failed.append(OrderedDict({
+                                                'location': 'POST GENERATING FORMSET DATA',
+                                                'url name': path_name,
+                                                'url': path,
+                                                'url pattern': url_pattern,
+                                                'parsed args': parsed_args,
+                                                'form class': form_class,
+                                                'default form data': data,
+                                                'post data': post_data,
+                                                'traceback': traceback.format_exc()
+                                            }))
+
+                                            if raise_every_time:
+                                                self.print_last_fail(failed)
+                                                raise
+                                            continue
+
+                                        try:
+                                            response = self.client.post(path=path, data=post_data, follow=True)
+                                            self.assertEqual(response.status_code, 200)
+                                        except Exception as e:
+                                            failed.append(OrderedDict({
+                                                'location': 'POST FORMSET',
+                                                'url name': path_name,
+                                                'url': path,
+                                                'url pattern': url_pattern,
+                                                'parsed args': parsed_args,
+                                                'form class': form_class,
+                                                'data': form_kwargs['data'],
+                                                'post data': post_data,
+                                                'form': form,
+                                                'traceback': traceback.format_exc()
+                                            }))
+                                            if raise_every_time:
+                                                self.print_last_fail(failed)
+                                                raise
+                                            continue
+                                    else:
+                                        failed.append(OrderedDict({
+                                            'location': 'POST',
+                                            'url name': path_name,
+                                            'url': path,
+                                            'url pattern': url_pattern,
+                                            'parsed args': parsed_args,
+                                            'form class': form_class,
+                                            'data': form_kwargs['data'],
+                                            'form': form,
+                                            'traceback': traceback.format_exc()
+                                        }))
+                                        if raise_every_time:
+                                            self.print_last_fail(failed)
+                                            raise
+                                        continue
                                 except Exception as e:
                                     failed.append(OrderedDict({
-                                        'location': 'POST FORMSET',
+                                        'location': 'POST',
                                         'url name': path_name,
                                         'url': path,
                                         'url pattern': url_pattern,
                                         'parsed args': parsed_args,
                                         'form class': form_class,
                                         'data': form_kwargs['data'],
-                                        'post data': post_data,
                                         'form': form,
                                         'traceback': traceback.format_exc()
                                     }))
@@ -1245,63 +1308,54 @@ class GenericTestMixin(object):
                                         self.print_last_fail(failed)
                                         raise
                                     continue
-                            else:
-                                failed.append(OrderedDict({
-                                    'location': 'POST',
-                                    'url name': path_name,
-                                    'url': path,
-                                    'url pattern': url_pattern,
-                                    'parsed args': parsed_args,
-                                    'form class': form_class,
-                                    'data': form_kwargs['data'],
-                                    'form': form,
-                                    'traceback': traceback.format_exc()
-                                }))
-                                if raise_every_time:
-                                    self.print_last_fail(failed)
-                                    raise
-                                continue
 
+                                if issubclass(view_class, (CreateView, UpdateView, DeleteView)):
+                                    obj_count_after = view_model.objects.all().count()
 
+                                    try:
+                                        if issubclass(view_class, CreateView):
+                                            self.assertEqual(obj_count_after, obj_count_before + 1)
+                                        elif issubclass(view_class, UpdateView):
+                                            self.assertEqual(obj_count_after, obj_count_before)
+                                        elif issubclass(view_class, DeleteView):
+                                            self.assertEqual(obj_count_after, obj_count_before - 1)
+                                            # recreate obj
+                                            self.generate_model_objs(view_class.model)
 
-                        if issubclass(view_class, (CreateView, UpdateView, DeleteView)):
-                            obj_count_after = view_model.objects.all().count()
+                                    except Exception as e:
+                                        # for key, value in init_form_kwargs.items():
+                                        #     if key not in form_kwargs:
+                                        #         form_kwargs[key] = value
 
-                            try:
-                                if issubclass(view_class, CreateView):
-                                    self.assertEqual(obj_count_after, obj_count_before + 1)
-                                elif issubclass(view_class, UpdateView):
-                                    self.assertEqual(obj_count_after, obj_count_before)
-                                elif issubclass(view_class, DeleteView):
-                                    self.assertEqual(obj_count_after, obj_count_before - 1)
-                                    # recreate obj
-                                    self.generate_model_objs(view_class.model)
+                                        # form = form_class(**form_kwargs)
+                                        form = response.context_data.get('form', None)
 
-                            except Exception as e:
-                                # for key, value in init_form_kwargs.items():
-                                #     if key not in form_kwargs:
-                                #         form_kwargs[key] = value
+                                        failed.append(OrderedDict({
+                                            'location': 'POST COUNT',
+                                            'url name': path_name,
+                                            'url': path,
+                                            'url pattern': url_pattern,
+                                            'parsed args': parsed_args,
+                                            'view model': view_class.model,
+                                            'form class': form_class,
+                                            # 'form': form,
+                                            'form valid': form.is_valid() if form else None,
+                                            'form errors': form.errors if form else None,
+                                            'data': form_kwargs['data'],
+                                            'traceback': traceback.format_exc()
+                                        }))
+                                        if raise_every_time:
+                                            self.print_last_fail(failed)
+                                            raise
 
-                                # form = form_class(**form_kwargs)
-                                form = response.context_data.get('form', None)
+                                # rollback post action
+                                raise IntegrityError('No problem')
 
-                                failed.append(OrderedDict({
-                                    'location': 'POST COUNT',
-                                    'url name': path_name,
-                                    'url': path,
-                                    'url pattern': url_pattern,
-                                    'parsed args': parsed_args,
-                                    'view model': view_class.model,
-                                    'form class': form_class,
-                                    # 'form': form,
-                                    'form valid': form.is_valid() if form else None,
-                                    'form errors': form.errors if form else None,
-                                    'data': form_kwargs['data'],
-                                    'traceback': traceback.format_exc()
-                                }))
-                                if raise_every_time:
-                                    self.print_last_fail(failed)
-                                    raise
+                        except IntegrityError as e:
+                            if e.args[0] != 'No problem':
+                                raise
+                        except Exception:
+                            raise
 
         if failed:
             # append failed count at the end of error list
@@ -1310,7 +1364,7 @@ class GenericTestMixin(object):
         self.assertFalse(failed, msg=pformat(failed, indent=4))
 
     def test_querysets(self):
-        models_querysets = [model.objects.all() for model in self.get_models()]
+        models_querysets = [model._default_manager.all() for model in self.get_models()]
         failed = []
 
         for qs in models_querysets:
@@ -1339,6 +1393,7 @@ class GenericTestMixin(object):
                         except Exception as e:
                             failed.append([{
                                 'location': 'DEFAULT KWARGS',
+                                'model': qs.model,
                                 'queryset method': '{}.{}'.format(qs_class_label, name),
                                 'kwargs': kwargs,
                                 'traceback': traceback.format_exc(),
@@ -1350,6 +1405,7 @@ class GenericTestMixin(object):
                         except Exception as e:
                             failed.append([{
                                 'location': 'NO KWARGS',
+                                'model': qs.model,
                                 'queryset method': '{}.{}'.format(qs_class_label, name),
                                 'traceback': traceback.format_exc(),
                             }])
@@ -1361,6 +1417,7 @@ class GenericTestMixin(object):
                         except Exception as e:
                             failed.append([{
                                 'location': 'GENERATING KWARGS',
+                                'model': qs.model,
                                 'queryset method': '{}.{}'.format(qs_class_label, name),
                                 'traceback': traceback.format_exc(),
                             }])
@@ -1370,6 +1427,7 @@ class GenericTestMixin(object):
                             except Exception as e:
                                 failed.append([{
                                     'location': 'GENERATED KWARGS',
+                                    'model': qs.model,
                                     'queryset method': '{}.{}'.format(qs_class_label, name),
                                     'kwargs': kwargs,
                                     'traceback': traceback.format_exc(),
@@ -1399,70 +1457,77 @@ class GenericTestMixin(object):
 
         for i, filter_class in enumerate(filter_classes):
             print(filter_class)
-            params_map = self.filter_params_map.get(filter_class, {})
-            init_kwargs = self.init_filter_kwargs(filter_class, default=params_map.get('init_kwargs', {}))
+            params_maps = self.filter_params_map.get(filter_class, {'default': {}})
 
-            try:
-                filter = filter_class(**init_kwargs)
-            except:
-                failed.append(OrderedDict({
-                    'location': 'FILTER INIT',
-                    'filter class': filter_class,
-                    'init_kwargs': init_kwargs,
-                    'params map': params_map,
-                    'traceback': traceback.format_exc()
-                }))
-                if raise_every_time:
-                    self.print_last_fail(failed)
-                    raise
-                continue
+            for map_name, params_map in params_maps.items():
+                init_kwargs = self.init_filter_kwargs(filter_class, default=params_map.get('init_kwargs', {}))
 
-            query_dict_data = QueryDict('', mutable=True)
+                try:
+                    filter = filter_class(**init_kwargs)
+                except:
+                    failed.append(OrderedDict({
+                        'location': 'FILTER INIT',
+                        'filter class': filter_class,
+                        'init_kwargs': init_kwargs,
+                        'params map': params_map,
+                        'traceback': traceback.format_exc()
+                    }))
+                    if raise_every_time:
+                        self.print_last_fail(failed)
+                        raise
+                    continue
 
-            try:
-                query_dict_data.update(self.generate_form_data(filter.form, params_map.get('data', {})))
-            except:
-                failed.append(OrderedDict({
-                    'location': 'FILTER DATA',
-                    'filter class': filter_class,
-                    'data': query_dict_data,
-                    'params map': params_map,
-                    'traceback': traceback.format_exc()
-                }))
-                if raise_every_time:
-                    self.print_last_fail(failed)
-                    raise
-                continue
+                query_dict_data = QueryDict('', mutable=True)
 
-            try:
-                queryset = params_map.get('queryset', filter_class._meta.model.objects.all())
-            except Exception as e:
-                failed.append(OrderedDict({
-                    'location': 'FILTER QUERYSET',
-                    'filter class': filter_class,
-                    'params map': params_map,
-                    'traceback': traceback.format_exc()
-                }))
-                if raise_every_time:
-                    self.print_last_fail(failed)
-                    raise
-                continue
+                try:
+                    query_dict_data.update(self.generate_form_data(filter.form, params_map.get('data', {})))
+                except:
+                    failed.append(OrderedDict({
+                        'location': 'FILTER DATA',
+                        'filter class': filter_class,
+                        'data': query_dict_data,
+                        'params map': params_map,
+                        'traceback': traceback.format_exc()
+                    }))
+                    if raise_every_time:
+                        self.print_last_fail(failed)
+                        raise
+                    continue
 
-            try:
-                filter = filter_class(data=query_dict_data, queryset=queryset, **init_kwargs)
-                qs = filter.qs.all().values()
-            except Exception as e:
-                failed.append(OrderedDict({
-                    'location': 'FILTER',
-                    'filter class': filter_class,
-                    'data': query_dict_data,
-                    'params map': params_map,
-                    'traceback': traceback.format_exc()
-                }))
-                if raise_every_time:
-                    self.print_last_fail(failed)
-                    raise
-                continue
+
+                try:
+                    queryset = init_kwargs.get('queryset', filter_class._meta.model._default_manager.all() if filter_class._meta.model else None)
+                except Exception as e:
+                    failed.append(OrderedDict({
+                        'location': 'FILTER QUERYSET',
+                        'filter class': filter_class,
+                        'params map': params_map,
+                        'traceback': traceback.format_exc()
+                    }))
+                    if raise_every_time:
+                        self.print_last_fail(failed)
+                        raise
+                    continue
+
+                if queryset:
+                    init_kwargs['queryset'] = queryset
+
+                try:
+                    filter = filter_class(data=query_dict_data, **init_kwargs)
+                    qs = filter.qs.all().values()
+                except Exception as e:
+                    failed.append(OrderedDict({
+                        'location': 'FILTER',
+                        'filter class': filter_class,
+                        'data': query_dict_data,
+                        'queryset': queryset,
+                        'params map': params_map,
+                        'traceback': traceback.format_exc()
+                    }))
+                    if raise_every_time:
+                        self.print_last_fail(failed)
+                        raise
+                    continue
 
         if failed:
             failed.append('{} filters FAILED'.format(len(failed)))
