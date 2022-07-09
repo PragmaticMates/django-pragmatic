@@ -892,10 +892,15 @@ class GenericTestMixin(object):
                     namespaces = [namespace for namespace, namespace_path_names in self.get_url_namespace_map().items() if
                                   namespace.endswith(app_name) and path_name in namespace_path_names]
 
+                if not namespaces:
+                    namespaces = [namespace for namespace, namespace_path_names in self.get_url_namespace_map().items() if
+                                  path_name in namespace_path_names]
+
                 if len(namespaces) != 1:
                     failed.append(OrderedDict({
                         'location': 'NAMESPACE',
                         'url name': path_params["path_name"],
+                        'app_name': app_name,
                         'module': module_name,
                         'matching namespaces': namespaces,
                         'traceback': 'Namespace matching failed'
@@ -905,7 +910,7 @@ class GenericTestMixin(object):
                         raise
                     continue
 
-                path_name = '{}:{}'.format(namespaces[0], path_name)
+                path_name = '{}:{}'.format(namespaces[0], path_name) if namespaces[0] else path_name
 
                 if self.RUN_ONLY_THESE_URL_NAMES and path_name not in self.RUN_ONLY_THESE_URL_NAMES:
                     # print('SKIP')
@@ -996,12 +1001,13 @@ class GenericTestMixin(object):
                                             matching_fields = [(field, model) for field, model in fields if
                                                                name == '{}_{}'.format(model._meta.label_lower.split(".")[-1], field.name)]
 
-                                            if not matching_fields:
-                                                # this might make problems as only partial match is made
-                                                matching_fields = [(p[0], view_model) for p in
-                                                                   inspect.getmembers(view_model,
-                                                                                      lambda o: isinstance(o, property)) if
-                                                                   p[0].startswith(name)]
+                                        if not matching_fields:
+                                            # this might make problems as only partial match is made
+                                            matching_fields = [(p[0], view_model) for p in inspect.getmembers(view_model, lambda o: isinstance(o, property)) if p[0].startswith(name)]
+
+                                        if not matching_fields:
+                                            # name is contained in field.name of view model
+                                            matching_fields = [(field, model) for field, model in fields if model == view_model and name in field.name]
 
                             if len(matching_fields) != 1 or matching_fields[0][1] is None:
                                 failed.append(OrderedDict({

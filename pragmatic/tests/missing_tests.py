@@ -78,7 +78,7 @@ class MissingTestMixin(GenericBaseMixin):
 
         for cls in filter_classes:
             # test filter class test existence
-            if not cls.__name__ in tested_class_names:
+            if not cls.__name__ in tested_class_names and issubclass(cls, (django_filters.Filter)):
                 failed.append(f'{cls.__module__}.{cls.__name__} test missing')
 
             # test filter class methods tests existence
@@ -96,7 +96,7 @@ class MissingTestMixin(GenericBaseMixin):
         self.assertEqual(len(failed), 0, msg=pformat(failed, indent=4))
 
     def test_for_missing_managers(self):
-        module_names = self.get_submodule_names(self.CHECK_MODULES, ['managers', 'querysets'], self.EXCLUDE_MODULES)
+        module_names = self.get_submodule_names(self.CHECK_MODULES, ['managers'], self.EXCLUDE_MODULES)
         manager_classes = set()
 
         # get manager classes
@@ -126,7 +126,7 @@ class MissingTestMixin(GenericBaseMixin):
         for app_name in app_names:
             managers_to_test = set()
 
-            for dir_name in ['managers', 'querysets']:
+            for dir_name in ['managers']:
                 module_name = '.'.join([app_name, dir_name])
 
                 try:
@@ -161,7 +161,7 @@ class MissingTestMixin(GenericBaseMixin):
                     for cls in test_classes:
                         # get managers testing methods by name
                         tests = [func for func in cls.__dict__.keys() if
-                                 callable(getattr(cls, func)) and func.startswith("test_") and func.endswith(('manager', 'queryset'))]
+                                 callable(getattr(cls, func)) and func.startswith("test_") and func.endswith(('manager'))]
 
                         # convert test methods names to manager/queryset clasess: test_name_of_manager -> NameOfManager, test_name_of_queryset -> NameOfQuerySet
                         tested_managers = {
