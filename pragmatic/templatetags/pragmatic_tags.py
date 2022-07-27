@@ -5,6 +5,7 @@ import re
 import urllib
 from django import template
 from django.conf import settings
+from django.contrib.contenttypes.models import ContentType
 from django.core.serializers.json import DjangoJSONEncoder
 from django.db.models import DateField, Count, Sum
 from django.db.models.functions import TruncDay
@@ -691,3 +692,15 @@ def date_from_isoformat(date_string):
 def values_list(qs, attrs):
     attributes = attrs.split(',')
     return qs.values_list(*attributes, flat=True)
+
+
+@register.filter()
+def get_objects_by_ids(ids, model):
+    ids_list = ids.split(',')
+    content_type = ContentType.objects.get_by_natural_key(*model.split('.'))
+
+    if not content_type:
+        return None
+
+    objects = content_type.model_class().objects.filter(id__in=ids_list)
+    return ', '.join(str(obj) for obj in objects.all())
