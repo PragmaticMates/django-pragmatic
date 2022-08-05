@@ -15,6 +15,7 @@ from collections import OrderedDict
 
 from django import urls
 from django.apps import apps
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.gis.db import models as gis_models
@@ -42,6 +43,10 @@ from django.views.generic import CreateView, UpdateView, DeleteView
 import internationalflavor
 
 from pragmatic import fields as pragmatic_fields
+
+if 'gm2m' in getattr(settings, 'INSTALLED_APPS'):
+    from gm2m import GM2MField
+
 
 
 class GenericBaseMixin(object):
@@ -103,8 +108,8 @@ class GenericBaseMixin(object):
             gis_models.PointField: Point(0.1276, 51.5072),
             gis_models.MultiPointField: MultiPoint(Point(0.1276, 51.5072), Point(0.1276, 51.5072)),
             internationalflavor.vat_number.VATNumberField: lambda f: 'LU{}'.format(random.randint(10000000, 99999999)),  # 'GB904447273',
-            DateTimeField: now(),
-            DateField: now().date(),
+            DateTimeField: lambda f: now(),
+            DateField: lambda f: now().date(),
             postgres_fields.DateTimeRangeField: (now(), now() + timedelta(days=1)),
             postgres_fields.DateRangeField: (now().date(), now() + timedelta(days=1)),
             FileField: self.get_pdf_file_mock(),
@@ -576,9 +581,8 @@ class GenericBaseMixin(object):
     def get_models_fields(self, model, required=None, related=None):
         is_required = lambda f: not getattr(f, 'blank', False) if required is True else getattr(f, 'blank', False) if required is False else True
         is_related = lambda f: isinstance(f, RelatedField) if related is True else not isinstance(f, RelatedField) if related is False else True
-        # required = lambda f: not getattr(f, 'blank', False) if required_only else True
-        # related = lambda f: isinstance(f, RelatedField) if related_only else True
-        return [f for f in model._meta.get_fields() if is_required(f) and is_related(f) and f.concrete and not f.auto_created]
+        is_gm2m = lambda f: isinstance(f, GM2MField) if 'gm2m' in getattr(settings, 'INSTALLED_APPS') and related is True else False
+        return [f for f in model._meta.get_fields() if (is_required(f) and is_related(f) and f.concrete and not f.auto_created) or (is_required(f) and is_gm2m(f))]
 
     def generate_model_field_values(self, model, field_values={}):
         not_related_fields = self.get_models_fields(model, related=False)
@@ -592,7 +596,7 @@ class GenericBaseMixin(object):
                 field_value = field.default
 
                 if inspect.isclass(field.default) and issubclass(field.default,
-                                                                 NOT_PROVIDED) or field.default is None:
+                                                                 NOT_PROVIDED) or field.default is None or field_value in [list]:
                     field_value = self.default_field_map.get(field.__class__, None)
 
                     if callable(field_value):
@@ -608,8 +612,10 @@ class GenericBaseMixin(object):
 
                 field_values[field.name] = field_value
 
+        m2m_classes = (ManyToManyField, GM2MField) if 'gm2m' in getattr(settings, 'INSTALLED_APPS') else ManyToManyField
+
         for field in related_fields:
-            if isinstance(field, ManyToManyField):
+            if isinstance(field, m2m_classes):
                 if field.name in field_values:
                     m2m_values[field.name] = field_values[field.name]
                     del field_values[field.name]
@@ -651,31 +657,45 @@ class GenericBaseMixin(object):
                     obj=None
 
             if not obj:
-                field_values = obj_values(self) if callable(obj_values) else obj_values
-                field_values, m2m_values = self.generate_model_field_values(model, field_values)
-
-                if model == self.user_model:
-                    if hasattr(self, 'create_user'):
-                        obj = self.create_user(**field_values)
-                    else:
-                        obj = getattr(model._default_manager, 'create_user')(**field_values)
-                else:
-
-                    try:
-                        with transaction.atomic():
-                            obj = getattr(model._default_manager, 'create')(**field_values)
-                    except Exception as e:
-                        obj = model(**field_values)
-                        obj.save()
-
-                for m2m_attr, m2m_value in m2m_values.items():
-                    getattr(obj, m2m_attr).set(m2m_value)
-
+                obj = self.generate_obj(model, obj_values)
                 new_objs.append(obj)
                 self.objs[obj_name] = obj
 
         return new_objs
 
+    def generate_obj(self, model, field_values=None, **kwargs):
+        if field_values is None:
+            # use kwargs for values if dict is not passed
+            if not kwargs:
+                field_values = {}
+            else:
+                field_values = kwargs
+
+        field_values = field_values(self) if callable(field_values) else field_values
+        field_values, m2m_values = self.generate_model_field_values(model, field_values)
+        post_save = field_values.pop('post_save', None)
+
+        if model == self.user_model:
+            if hasattr(self, 'create_user'):
+                obj = self.create_user(**field_values)
+            else:
+                obj = getattr(model._default_manager, 'create_user')(**field_values)
+        else:
+
+            try:
+                with transaction.atomic():
+                    obj = getattr(model._default_manager, 'create')(**field_values)
+            except Exception as e:
+                obj = model(**field_values)
+                obj.save()
+
+        for m2m_attr, m2m_value in m2m_values.items():
+            getattr(obj, m2m_attr).set(m2m_value)
+
+        if post_save:
+            post_save(obj)
+
+        return obj
 
     def get_generated_obj(self, model, obj_name=None):
         if obj_name is None:
@@ -701,12 +721,14 @@ class GenericBaseMixin(object):
             except model.DoesNotExist:
                 obj = None
 
-
         if not obj:
             self.generate_model_objs(model)
             obj = self.objs.get(obj_name, None)
 
         if not obj:
+            if obj_name:
+                raise Exception(f'{model} object with name {obj_name} doesn\'t exist')
+
             raise Exception('Something\'s fucked')
 
         return obj
@@ -813,7 +835,7 @@ class GenericBaseMixin(object):
         return {}.get(filter_class, self.generate_func_args(filter_class.__init__, default=default))
 
     def setUp(self):
-        super(GenericBaseMixin, self).setUp()
+        super().setUp()
         self.import_modules_if_needed()
         self.generate_objs()
         user = self.objs.get('superuser', self.get_generated_obj(self.user_model))
