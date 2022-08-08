@@ -15,6 +15,7 @@ from collections import OrderedDict
 
 from django import urls
 from django.apps import apps
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.gis.db import models as gis_models
@@ -43,6 +44,10 @@ import internationalflavor
 
 from pragmatic import fields as pragmatic_fields
 
+if 'gm2m' in getattr(settings, 'INSTALLED_APPS'):
+    from gm2m import GM2MField
+
+
 
 class GenericBaseMixin(object):
     # USER_MODEL = User
@@ -56,7 +61,8 @@ class GenericBaseMixin(object):
     POST_ONLY_URLS = []
     GET_ONLY_URLS = []
 
-    def manual_model_dependency(self):
+    @classmethod
+    def manual_model_dependency(cls):
         '''
         for example required by model_field_values_map
         return {
@@ -66,8 +72,8 @@ class GenericBaseMixin(object):
 
         return {}
 
-    @property
-    def model_field_values_map(self):
+    @classmethod
+    def model_field_values_map(cls):
         '''{
             User: {
                 'my_user': {
@@ -81,51 +87,51 @@ class GenericBaseMixin(object):
         '''
         return {}
 
-    @property
-    def user_model(self):
+    @classmethod
+    def user_model(cls):
         try:
-            return self.USER_MODEL
+            return cls.USER_MODEL
         except:
             return get_user_model()
 
-    @property
-    def default_field_map(self):
+    @classmethod
+    def default_field_map(cls):
         # values can be callables with with field variable
         return {
-            ForeignKey: lambda f: self.get_generated_obj(f.related_model),
-            OneToOneField: lambda f: self.get_generated_obj(f.related_model),
+            ForeignKey: lambda f: cls.get_generated_obj(f.related_model),
+            OneToOneField: lambda f: cls.get_generated_obj(f.related_model),
             BooleanField: False,
             TextField: lambda f: '{}_{}'.format(f.model._meta.label_lower, f.name),
             CharField: lambda f: list(f.choices)[0][0] if f.choices else '{}_{}'.format(f.model._meta.label_lower, f.name)[:f.max_length],
-            SlugField: lambda f: '{}_{}'.format(f.name, self.next_id(f.model)),
-            EmailField: lambda f: '{}.{}@example.com'.format(f.model._meta.label_lower, self.next_id(f.model)),
+            SlugField: lambda f: '{}_{}'.format(f.name, cls.next_id(f.model)),
+            EmailField: lambda f: '{}.{}@example.com'.format(f.model._meta.label_lower, cls.next_id(f.model)),
             internationalflavor.countries.CountryField: 'LU',
             gis_models.PointField: Point(0.1276, 51.5072),
             gis_models.MultiPointField: MultiPoint(Point(0.1276, 51.5072), Point(0.1276, 51.5072)),
             internationalflavor.vat_number.VATNumberField: lambda f: 'LU{}'.format(random.randint(10000000, 99999999)),  # 'GB904447273',
-            DateTimeField: now(),
-            DateField: now().date(),
+            DateTimeField: lambda f: now(),
+            DateField: lambda f: now().date(),
             postgres_fields.DateTimeRangeField: (now(), now() + timedelta(days=1)),
             postgres_fields.DateRangeField: (now().date(), now() + timedelta(days=1)),
-            FileField: self.get_pdf_file_mock(),
-            IntegerField: self.get_num_field_mock_value,
-            PositiveSmallIntegerField: self.get_num_field_mock_value,
-            DecimalField: self.get_num_field_mock_value,
-            PositiveIntegerField: self.get_num_field_mock_value,
-            SmallIntegerField: self.get_num_field_mock_value,
-            BigIntegerField: self.get_num_field_mock_value,
-            FloatField: self.get_num_field_mock_value,
-            ImageField: self.get_image_file_mock(),
+            FileField: lambda f: cls.get_pdf_file_mock(),
+            IntegerField: lambda f: cls.get_num_field_mock_value(f),
+            PositiveSmallIntegerField: lambda f: cls.get_num_field_mock_value(f),
+            DecimalField: lambda f: cls.get_num_field_mock_value(f),
+            PositiveIntegerField: lambda f: cls.get_num_field_mock_value(f),
+            SmallIntegerField: lambda f: cls.get_num_field_mock_value(f),
+            BigIntegerField: lambda f: cls.get_num_field_mock_value(f),
+            FloatField: lambda f: cls.get_num_field_mock_value(f),
+            ImageField: lambda f: cls.get_image_file_mock(),
             GenericIPAddressField: '127.0.0.1',
             postgres_fields.JSONField: {},
-            postgres_fields.ArrayField: lambda f: [self.default_field_map[f.base_field.__class__](f.base_field)],
+            postgres_fields.ArrayField: lambda f: [cls.default_field_map()[f.base_field.__class__](f.base_field)],
             JSONField: {},
             URLField: lambda f: f'www.google.com',
             internationalflavor.iban.IBANField: 'LU28 0019 4006 4475 0000',
         }
 
-    @property
-    def default_form_field_map(self):
+    @classmethod
+    def default_form_field_map(cls):
         # values can be callables with with field variable
         return {
             django_filter_fields.ModelChoiceField: lambda f: f.queryset.first().id,
@@ -134,16 +140,16 @@ class GenericBaseMixin(object):
             django_filter_fields.ChoiceField: lambda f: list(f.choices)[-1][0],
             django_filter_fields.RangeField: lambda f: [1, 100],
             django_filter_fields.DateRangeField: lambda f: (now().date(), now() + timedelta(days=1)),
-            django_form_fields.EmailField: lambda f: self.get_new_email(),
+            django_form_fields.EmailField: lambda f: cls.get_new_email(),
             django_form_fields.CharField: lambda f: '{}_{}'.format(f.label, random.randint(1, 999))[:f.max_length],
             django_form_fields.TypedChoiceField: lambda f: list(f.choices)[-1][1][0][0] if f.choices and isinstance(list(f.choices)[-1][1], list) else list(f.choices)[-1][0] if f.choices else '{}'.format(f.label)[:f.max_length],
             django_form_fields.ChoiceField: lambda f: list(f.choices)[-1][1][0][0] if f.choices and isinstance(list(f.choices)[-1][1], list) else list(f.choices)[-1][0] if f.choices else '{}'.format(f.label)[:f.max_length],
-            django_form_fields.ImageField: self.get_image_file_mock(),
-            django_form_fields.FileField: self.get_pdf_file_mock(),
+            django_form_fields.ImageField: lambda f: cls.get_image_file_mock(),
+            django_form_fields.FileField: lambda f: cls.get_pdf_file_mock(),
             django_form_fields.DateTimeField: lambda f: now().strftime(list(f.input_formats)[-1]) if hasattr(f, 'input_formats') else now(),
             django_form_fields.DateField: now().date(),
-            django_form_fields.IntegerField: lambda f: self.get_num_field_mock_value(f),
-            django_form_fields.DecimalField: lambda f: self.get_num_field_mock_value(f),
+            django_form_fields.IntegerField: lambda f: cls.get_num_field_mock_value(f),
+            django_form_fields.DecimalField: lambda f: cls.get_num_field_mock_value(f),
             django_form_models.ModelMultipleChoiceField: lambda f: [f.queryset.first().id],
             django_form_models.ModelChoiceField: lambda f: f.queryset.first().id,
             django_form_fields.BooleanField: True,
@@ -154,10 +160,10 @@ class GenericBaseMixin(object):
             django_form_fields.JSONField: '',
             django_form_fields.SplitDateTimeField: lambda f: [now().date(), now().time()],
             django_form_fields.GenericIPAddressField: '127.0.0.1',
-            django_form_fields.FloatField: lambda f: self.get_num_field_mock_value(f),
+            django_form_fields.FloatField: lambda f: cls.get_num_field_mock_value(f),
             gis_forms.PointField: 'POINT (0.1276 51.5072)',
             postgres_forms.HStoreField: '',
-            postgres_forms.SimpleArrayField: lambda f: [self.default_form_field_map[f.base_field.__class__](f.base_field)],
+            postgres_forms.SimpleArrayField: lambda f: [cls.default_form_field_map()[f.base_field.__class__](f.base_field)],
             postgres_forms.DateTimeRangeField: lambda f: [now().strftime(list(f.input_formats)[-1]) if hasattr(f, 'input_formats') else now(), now().strftime(list(f.input_formats)[-1]) if hasattr(f, 'input_formats') else now()],
             pragmatic_fields.AlwaysValidChoiceField: lambda f: list(f.choices)[-1][0] if f.choices else '{}'.format(f.label),
             pragmatic_fields.AlwaysValidMultipleChoiceField: lambda f: f'{list(f.choices)[-1][0]}' if f.choices else '{}'.format(f.label),
@@ -167,8 +173,9 @@ class GenericBaseMixin(object):
             internationalflavor.vat_number.VATNumberFormField: lambda f: 'LU{}'.format(random.randint(10000000, 99999999)),  # 'GB904447273',
         }
 
-    def import_modules_if_needed(self):
-        module_names = self.get_submodule_names(self.CHECK_MODULES, self.CHECK_MODULES, self.EXCLUDE_MODULES)
+    @classmethod
+    def import_modules_if_needed(cls):
+        module_names = cls.get_submodule_names(cls.CHECK_MODULES, cls.CHECK_MODULES, cls.EXCLUDE_MODULES)
 
         for module_name in module_names:
             try:
@@ -178,8 +185,9 @@ class GenericBaseMixin(object):
                 print('Failed to import module: {}'.format(module_name))
                 raise e
 
-    def get_source_code(self, modules, lines=True):
-        module_names = sorted(self.get_submodule_names(self.CHECK_MODULES, modules, self.EXCLUDE_MODULES))
+    @classmethod
+    def get_source_code(cls, modules, lines=True):
+        module_names = sorted(cls.get_submodule_names(cls.CHECK_MODULES, modules, cls.EXCLUDE_MODULES))
 
         if lines:
             return OrderedDict(
@@ -187,13 +195,14 @@ class GenericBaseMixin(object):
 
         return OrderedDict(((module_name, inspect.getsource(sys.modules[module_name])) for module_name in module_names))
 
-    @property
-    def apps_to_check(self):
-        return [app for app in apps.get_app_configs() if app.name.startswith(tuple(self.CHECK_MODULES))]
+    @classmethod
+    def apps_to_check(cls):
+        return [app for app in apps.get_app_configs() if app.name.startswith(tuple(cls.CHECK_MODULES))]
 
-    def get_module_class_methods(self, module):
+    @classmethod
+    def get_module_class_methods(cls, module):
         # get classes defined in module, not imported
-        classes = self.get_module_classes(module)
+        classes = cls.get_module_classes(module)
         methods = set()
 
         for cls in classes:
@@ -201,13 +210,16 @@ class GenericBaseMixin(object):
 
         return methods
 
-    def get_module_classes(self, module):
+    @classmethod
+    def get_module_classes(cls, module):
         return {m[1] for m in inspect.getmembers(module, inspect.isclass) if m[1].__module__ == module.__name__}
 
-    def get_module_functions(self, module):
+    @classmethod
+    def get_module_functions(cls, module):
         return {m[1] for m in inspect.getmembers(module, inspect.isfunction) if m[1].__module__ == module.__name__}
 
-    def get_submodule_names(self, parent_module_names, submodule_names, exclude_names=[]):
+    @classmethod
+    def get_submodule_names(cls, parent_module_names, submodule_names, exclude_names=[]):
         # looks for submodules of parent_module containing submodule_name and not containing any of exclude_names,
         # which are not package (files, not dirs)
         module_names = set()
@@ -235,7 +247,8 @@ class GenericBaseMixin(object):
 
         return (module_names)
 
-    def parse_args(self, args, eval_args=True, eval_kwargs=True):
+    @classmethod
+    def parse_args(cls, args, eval_args=True, eval_kwargs=True):
         args = 'f({})'.format(args)
         tree = ast.parse(args)
         funccall = tree.body[0].value
@@ -261,16 +274,19 @@ class GenericBaseMixin(object):
 
         return args, kwargs
 
-    def get_generated_email(self, model=None):
+    @classmethod
+    def get_generated_email(cls, model=None):
         if model is None:
-            model = self.user_model
+            model = cls.user_model()
 
-        return self.get_generated_obj(model).email
+        return cls.get_generated_obj(model).email
 
-    def get_new_email(self):
+    @classmethod
+    def get_new_email(cls):
         return 'email.{}@example.com'.format(random.randint(1, 999))
 
-    def get_mock_request(self, **kwargs):
+    @classmethod
+    def get_mock_request(cls, **kwargs):
         request = RequestFactory().get('/')
 
         for key, value in kwargs.items():
@@ -278,11 +294,12 @@ class GenericBaseMixin(object):
 
         return request
 
-    def generate_kwargs(self, args=[], kwargs={}, func=None, default={}):
+    @classmethod
+    def generate_kwargs(cls, args=[], kwargs={}, func=None, default={}):
         # maching kwarg names with
         # 1. model names and assigns generated objs acordingly,
         # 2. field names of instance.model if exists such that instance.func
-        models = {model._meta.label_lower.split('.')[-1]: model for model in self.get_models()}
+        models = {model._meta.label_lower.split('.')[-1]: model for model in cls.get_models()}
         result_kwargs = {**default}
 
         try:
@@ -291,12 +308,12 @@ class GenericBaseMixin(object):
                     # result_kwargs[name] = default[name]
                     pass
                 elif name == 'email':
-                    result_kwargs[name] = self.get_generated_email()
+                    result_kwargs[name] = cls.get_generated_email()
                 else:
                     matching_models = [model for model_name, model in models.items() if model_name == name]
 
                     if len(matching_models) == 1:
-                        result_kwargs[name] = self.get_generated_obj(matching_models[0])
+                        result_kwargs[name] = cls.get_generated_obj(matching_models[0])
                     elif not func is None:
                         model = None
 
@@ -305,7 +322,7 @@ class GenericBaseMixin(object):
 
                         if not model is None:
                             try:
-                                result_kwargs[name] = getattr(self.get_generated_obj(model), name)
+                                result_kwargs[name] = getattr(cls.get_generated_obj(model), name)
                             except AttributeError:
                                 pass
 
@@ -320,12 +337,12 @@ class GenericBaseMixin(object):
             if arg in default:
                 result_kwargs[arg] = default[arg]
             elif arg == 'email':
-                result_kwargs[arg] = self.get_generated_email()
+                result_kwargs[arg] = cls.get_generated_email()
             else:
                 matching_models = [model for name, model in models.items() if name == arg]
 
                 if len(matching_models) == 1:
-                    result_kwargs[arg] = self.get_generated_obj(matching_models[0])
+                    result_kwargs[arg] = cls.get_generated_obj(matching_models[0])
                 elif not func is None:
                     model = None
 
@@ -334,34 +351,37 @@ class GenericBaseMixin(object):
 
                     if not model is None:
                         try:
-                            result_kwargs[arg] = getattr(self.get_generated_obj(model), arg)
+                            result_kwargs[arg] = getattr(cls.get_generated_obj(model), arg)
                         except AttributeError:
                             pass
 
         return result_kwargs
 
-    def generate_func_args(self, func, default={}):
+    @classmethod
+    def generate_func_args(cls, func, default={}):
         source = inspect.getsource(func)
         args = r'([^\)]*)'
         args = re.findall('def {}\({}\):'.format(func.__name__, args), source)
         args = [args[0].replace(' *,', '')] # dont really get why would someone use this but it happened
-        return self.generate_kwargs(*self.parse_args(args[0], eval_args=False, eval_kwargs=False), func=func, default=default)
+        return cls.generate_kwargs(*cls.parse_args(args[0], eval_args=False, eval_kwargs=False), func=func, default=default)
 
-    def generate_form_data(self, form, default_data):
+    @classmethod
+    def generate_form_data(cls, form, default_data):
         data = {}
 
         for name, field in default_data.items():
             value = default_data[name]
-            data[name] = value(self) if callable(value) else value
+            data[name] = value(cls) if callable(value) else value
 
         for name, field in form.fields.items():
             if name not in data and not isinstance(field, django_form_models.InlineForeignKeyField): # inline fk is is sued in inline formsets
-                value = self.default_form_field_map[field.__class__]
+                value = cls.default_form_field_map()[field.__class__]
                 data[name] = value(field) if callable(value) else value
 
         return data
 
-    def get_url_namespace_map(self):
+    @classmethod
+    def get_url_namespace_map(cls):
         resolver = urls.get_resolver(urls.get_urlconf())
         namespaces = {'': [key for key in resolver.reverse_dict.keys() if not callable(key)]}
         for key_1, resolver_1 in resolver.namespace_dict.items():
@@ -376,16 +396,18 @@ class GenericBaseMixin(object):
 
         return namespaces
 
-    def get_url_namespaces(self):
-        source_by_module = self.get_source_code(['urls'], lines=False)
+    @classmethod
+    def get_url_namespaces(cls):
+        source_by_module = cls.get_source_code(['urls'], lines=False)
         namespace_map = OrderedDict()
 
         for module_name, source_code in source_by_module.items():
             regex_paths = re.findall(r'app_name=["\']([\w_]+)["\'], ?namespace=["\']([\w_]+)["\']', source_code)
             namespace_map.update({})
 
-    def get_url_views_by_module(self):
-        source_by_module = self.get_source_code(['urls'], lines=False)
+    @classmethod
+    def get_url_views_by_module(cls):
+        source_by_module = cls.get_source_code(['urls'], lines=False)
         paths_by_module = OrderedDict()
 
         skip_comments = r'([ \t]*#*[ \t]*)'
@@ -412,20 +434,22 @@ class GenericBaseMixin(object):
                 'path_name': regex_path[5],
                 'url_pattern': regex_path[1] if regex_path[1] else regex_path[2],
                 'view_class': imported_classes.get(regex_path[3], None),
-                'view_params': self.parse_args(regex_path[4], eval_args=False, eval_kwargs=False),
+                'view_params': cls.parse_args(regex_path[4], eval_args=False, eval_kwargs=False),
             } for regex_path in regex_paths if '#' not in regex_path[0]]
 
         return paths_by_module
 
-    def get_apps_by_name(self, app_name=[]):
+    @classmethod
+    def get_apps_by_name(cls, app_name=[]):
         if isinstance(app_name, str):
             app_name = [app_name]
 
         return [app for app in apps.get_app_configs() if app.name.startswith(tuple(app_name))]
 
-    def get_models_from_app(self, app):
+    @classmethod
+    def get_models_from_app(cls, app):
         if isinstance(app, str):
-            apps = self.get_apps_by_name(app_name=app)
+            apps = cls.get_apps_by_name(app_name=app)
 
             if len(apps) > 1:
                 raise ValueError('App name "{}" is ambiguous'.format(app))
@@ -434,10 +458,11 @@ class GenericBaseMixin(object):
 
         return [model for model in app.get_models()]
 
-    def get_models(self):
-        models = [model for app in self.apps_to_check for model in app.get_models()]
+    @classmethod
+    def get_models(cls):
+        models = [model for app in cls.apps_to_check() for model in app.get_models()]
 
-        for module_name, module_params in self.get_url_views_by_module().items():
+        for module_name, module_params in cls.get_url_views_by_module().items():
             for path_params in module_params:
                 model = getattr(path_params['view_class'], 'model', None)
                 if model and model not in models:
@@ -451,15 +476,17 @@ class GenericBaseMixin(object):
 
         return models
 
-    def get_models_with_required_fields(self):
+    @classmethod
+    def get_models_with_required_fields(cls):
         return OrderedDict({
             model: [f for f in model._meta.get_fields() if
                     not getattr(f, 'blank', False) and f.concrete and not f.auto_created]
-            for model in self.get_models()
+            for model in cls.get_models()
         })
 
-    def get_models_dependency(self, required_only=True):
-        models = self.get_models()
+    @classmethod
+    def get_models_dependency(cls, required_only=True):
+        models = cls.get_models()
 
         # find direct dependencies
         dependency = OrderedDict({
@@ -470,7 +497,7 @@ class GenericBaseMixin(object):
                 'not_required': {} if required_only else {f.related_model for f in model._meta.get_fields()
                                                           if getattr(f, 'blank', False) and isinstance(f,
                                                                                                        RelatedField) and f.concrete and not f.auto_created},
-            } for model in self.get_models()
+            } for model in cls.get_models()
         })
 
         missing_models = set()
@@ -494,7 +521,7 @@ class GenericBaseMixin(object):
         })
 
         # add manualy set dependencies
-        for model, relations in self.manual_model_dependency().items():
+        for model, relations in cls.manual_model_dependency().items():
             dependency[model]['required'] |= relations
 
         # add deeper level dependencies
@@ -507,7 +534,8 @@ class GenericBaseMixin(object):
 
         return dependency
 
-    def get_sorted_models_dependency(self, required_only=False, reverse=False):
+    @classmethod
+    def get_sorted_models_dependency(cls, required_only=False, reverse=False):
         def compare_models_dependency(x, y):
             # less dependent first
             if x[0] in y[1]['required'] and y[0] in x[1]['required']:
@@ -548,14 +576,17 @@ class GenericBaseMixin(object):
 
             return 0
 
-        sorted_models = sorted(self.get_models_dependency(required_only).items(), key=lambda x: x[0]._meta.label,
+        sorted_models = sorted(cls.get_models_dependency(required_only).items(), key=lambda x: x[0]._meta.label,
                                reverse=reverse)
         sorted_models = OrderedDict(
             sorted(sorted_models, key=functools.cmp_to_key(compare_models_dependency), reverse=reverse))
+
+        # pprint(sorted_models)
         return sorted_models
 
-    def generate_objs(self):
-        models_hierarchy = self.get_sorted_models_dependency(required_only=False)
+    @classmethod
+    def generate_objs(cls):
+        models_hierarchy = cls.get_sorted_models_dependency(required_only=False)
         generated_objs = OrderedDict()
         models = models_hierarchy.keys()
 
@@ -563,27 +594,29 @@ class GenericBaseMixin(object):
             if model._meta.proxy:
                 continue
 
-            generated_objs[model] = self.generate_model_objs(model)
+            generated_objs[model] = cls.generate_model_objs(model)
 
         return generated_objs
 
-    def delete_ojbs(self):
-        models_hierarchy = self.get_sorted_models_dependency(required_only=False, reverse=True)
+    @classmethod
+    def delete_ojbs(cls):
+        models_hierarchy = cls.get_sorted_models_dependency(required_only=False, reverse=True)
 
         for model in models_hierarchy.keys():
             model.objects.all().delete()
 
-    def get_models_fields(self, model, required=None, related=None):
+    @classmethod
+    def get_models_fields(cls, model, required=None, related=None):
         is_required = lambda f: not getattr(f, 'blank', False) if required is True else getattr(f, 'blank', False) if required is False else True
         is_related = lambda f: isinstance(f, RelatedField) if related is True else not isinstance(f, RelatedField) if related is False else True
-        # required = lambda f: not getattr(f, 'blank', False) if required_only else True
-        # related = lambda f: isinstance(f, RelatedField) if related_only else True
-        return [f for f in model._meta.get_fields() if is_required(f) and is_related(f) and f.concrete and not f.auto_created]
+        is_gm2m = lambda f: isinstance(f, GM2MField) if 'gm2m' in getattr(settings, 'INSTALLED_APPS') and related is True else False
+        return [f for f in model._meta.get_fields() if (is_required(f) and is_related(f) and f.concrete and not f.auto_created) or (is_required(f) and is_gm2m(f))]
 
-    def generate_model_field_values(self, model, field_values={}):
-        not_related_fields = self.get_models_fields(model, related=False)
-        related_fields = self.get_models_fields(model, related=True)
-        ignore_model_fields = self.IGNORE_MODEL_FIELDS.get(model, [])
+    @classmethod
+    def generate_model_field_values(cls, model, field_values={}):
+        not_related_fields = cls.get_models_fields(model, related=False)
+        related_fields = cls.get_models_fields(model, related=True)
+        ignore_model_fields = cls.IGNORE_MODEL_FIELDS.get(model, [])
         field_values = dict(field_values)
         m2m_values = {}
 
@@ -592,8 +625,8 @@ class GenericBaseMixin(object):
                 field_value = field.default
 
                 if inspect.isclass(field.default) and issubclass(field.default,
-                                                                 NOT_PROVIDED) or field.default is None:
-                    field_value = self.default_field_map.get(field.__class__, None)
+                                                                 NOT_PROVIDED) or field.default is None or field_value in [list]:
+                    field_value = cls.default_field_map().get(field.__class__, None)
 
                     if callable(field_value):
                         field_value = field_value(field)
@@ -608,8 +641,10 @@ class GenericBaseMixin(object):
 
                 field_values[field.name] = field_value
 
+        m2m_classes = (ManyToManyField, GM2MField) if 'gm2m' in getattr(settings, 'INSTALLED_APPS') else ManyToManyField
+
         for field in related_fields:
-            if isinstance(field, ManyToManyField):
+            if isinstance(field, m2m_classes):
                 if field.name in field_values:
                     m2m_values[field.name] = field_values[field.name]
                     del field_values[field.name]
@@ -618,7 +653,7 @@ class GenericBaseMixin(object):
 
                 if inspect.isclass(field.default) and issubclass(field.default,
                                                                  NOT_PROVIDED) or field.default is None:
-                    field_value = self.default_field_map.get(field.__class__, None)
+                    field_value = cls.default_field_map().get(field.__class__, None)
 
                     if callable(field_value):
                         field_value = field_value(field)
@@ -635,14 +670,15 @@ class GenericBaseMixin(object):
 
         return field_values, m2m_values
 
-    def generate_model_objs(self, model):
-        # required_fields = self.get_models_fields(model, required_only=True)
-        # related_fields = self.get_models_fields(model, related_only=True)
-        model_obj_values_map = self.model_field_values_map.get(model, {model._meta.label_lower.replace('.', '_'): {}})
+    @classmethod
+    def generate_model_objs(cls, model):
+        # required_fields = cls.get_models_fields(model, required_only=True)
+        # related_fields = cls.get_models_fields(model, related_only=True)
+        model_obj_values_map = cls.model_field_values_map().get(model, {model._meta.label_lower.replace('.', '_'): {}})
         new_objs = []
 
         for obj_name, obj_values in model_obj_values_map.items():
-            obj = self.objs.get(obj_name, None)
+            obj = cls.objs.get(obj_name, None)
 
             if obj:
                 try:
@@ -651,49 +687,65 @@ class GenericBaseMixin(object):
                     obj=None
 
             if not obj:
-                field_values = obj_values(self) if callable(obj_values) else obj_values
-                field_values, m2m_values = self.generate_model_field_values(model, field_values)
-
-                if model == self.user_model:
-                    if hasattr(self, 'create_user'):
-                        obj = self.create_user(**field_values)
-                    else:
-                        obj = getattr(model._default_manager, 'create_user')(**field_values)
-                else:
-
-                    try:
-                        with transaction.atomic():
-                            obj = getattr(model._default_manager, 'create')(**field_values)
-                    except Exception as e:
-                        obj = model(**field_values)
-                        obj.save()
-
-                for m2m_attr, m2m_value in m2m_values.items():
-                    getattr(obj, m2m_attr).set(m2m_value)
-
+                obj = cls.generate_obj(model, obj_values)
                 new_objs.append(obj)
-                self.objs[obj_name] = obj
+                cls.objs[obj_name] = obj
 
         return new_objs
 
+    @classmethod
+    def generate_obj(cls, model, field_values=None, **kwargs):
+        if field_values is None:
+            # use kwargs for values if dict is not passed
+            if not kwargs:
+                field_values = {}
+            else:
+                field_values = kwargs
 
-    def get_generated_obj(self, model, obj_name=None):
+        field_values = field_values(cls) if callable(field_values) else field_values
+        field_values, m2m_values = cls.generate_model_field_values(model, field_values)
+        post_save = field_values.pop('post_save', None)
+
+        if model == cls.user_model():
+            if hasattr(cls, 'create_user'):
+                obj = cls.create_user(**field_values)
+            else:
+                obj = getattr(model._default_manager, 'create_user')(**field_values)
+        else:
+
+            try:
+                with transaction.atomic():
+                    obj = getattr(model._default_manager, 'create')(**field_values)
+            except Exception as e:
+                obj = model(**field_values)
+                obj.save()
+
+        for m2m_attr, m2m_value in m2m_values.items():
+            getattr(obj, m2m_attr).set(m2m_value)
+
+        if post_save:
+            post_save(obj)
+
+        return obj
+
+    @classmethod
+    def get_generated_obj(cls, model, obj_name=None):
         if obj_name is None:
             if model._meta.proxy:
                 model = model._meta.concrete_model
 
-            if model in self.model_field_values_map.keys():
-                if model == self.user_model and 'superuser' in self.model_field_values_map[model].keys():
+            if model in cls.model_field_values_map().keys():
+                if model == cls.user_model() and 'superuser' in cls.model_field_values_map()[model].keys():
                     obj_name = 'superuser'
-                elif isinstance(self.model_field_values_map[model], OrderedDict):
-                    obj_name = list(self.model_field_values_map[model].keys())[0]
+                elif isinstance(cls.model_field_values_map()[model], OrderedDict):
+                    obj_name = list(cls.model_field_values_map()[model].keys())[0]
                 else:
-                    obj_name = sorted(list(self.model_field_values_map[model].keys()))[0]
+                    obj_name = sorted(list(cls.model_field_values_map()[model].keys()))[0]
 
-            if obj_name not in self.objs:
+            if obj_name not in cls.objs:
                 obj_name = model._meta.label_lower.replace('.', '_')
 
-        obj =  self.objs.get(obj_name, None)
+        obj =  cls.objs.get(obj_name, None)
 
         if obj:
             try:
@@ -701,22 +753,25 @@ class GenericBaseMixin(object):
             except model.DoesNotExist:
                 obj = None
 
+        if not obj:
+            cls.generate_model_objs(model)
+            obj = cls.objs.get(obj_name, None)
 
         if not obj:
-            self.generate_model_objs(model)
-            obj = self.objs.get(obj_name, None)
+            if obj_name:
+                raise Exception(f'{model} object with name {obj_name} doesn\'t exist')
 
-        if not obj:
             raise Exception('Something\'s fucked')
 
         return obj
-        # return self.objs.get(obj_name, model.objects.first())
+        # return cls.objs.get(obj_name, model.objects.first())
 
     @classmethod
     def next_id(cls, model):
         return model.objects.order_by('id').last().id + 1 if model.objects.exists() else 0
 
-    def get_pdf_file_mock(self, name='test.pdf'):
+    @classmethod
+    def get_pdf_file_mock(cls, name='test.pdf'):
         file_path = os.path.join(os.path.dirname(__file__), 'blank.pdf')
         file = open(file_path, 'rb')
         file_mock = SimpleUploadedFile(
@@ -726,7 +781,8 @@ class GenericBaseMixin(object):
         )
         return file_mock
 
-    def get_image_file_mock(self, name='test.jpg', file_path=None):
+    @classmethod
+    def get_image_file_mock(cls, name='test.jpg', file_path=None):
         if file_path is None:
             file_path = os.path.join(os.path.dirname(__file__), 'blank.jpg')
         file = open(file_path, 'rb')
@@ -737,7 +793,8 @@ class GenericBaseMixin(object):
         )
         return file_mock
 
-    def get_num_field_mock_value(self, field):
+    @classmethod
+    def get_num_field_mock_value(cls, field):
         if field.validators:
             if len(field.validators) == 2 \
                     and isinstance(field.validators[0], (MinValueValidator, MaxValueValidator)) \
@@ -800,7 +857,7 @@ class GenericBaseMixin(object):
 
     def init_form_kwargs(self, form_class, default={}):
         '''{
-            UserForm: {'user': self.get_generated_obj(User)},
+            UserForm: {'user': cls.get_generated_obj(User)},
         }
         '''
         return {}.get(form_class, self.generate_func_args(form_class.__init__, default))
@@ -812,11 +869,15 @@ class GenericBaseMixin(object):
         '''
         return {}.get(filter_class, self.generate_func_args(filter_class.__init__, default=default))
 
+    @classmethod
+    def setUpTestData(cls):
+        super(GenericBaseMixin, cls).setUpTestData()
+
+        cls.import_modules_if_needed()
+        cls.generate_objs()
+
     def setUp(self):
-        super(GenericBaseMixin, self).setUp()
-        self.import_modules_if_needed()
-        self.generate_objs()
-        user = self.objs.get('superuser', self.get_generated_obj(self.user_model))
+        user = self.objs.get('superuser', self.get_generated_obj(self.user_model()))
         credentials = {'password': self.TEST_PASSWORD}
 
         if hasattr(user, 'email'):
@@ -829,16 +890,14 @@ class GenericBaseMixin(object):
         self.assertTrue(logged_in)
         self.user = user
 
-    def tearDown(self):
-        # self.delete_ojbs()
-        super(GenericBaseMixin, self).tearDown()
-
-    def print_last_fail(self, failed):
+    @classmethod
+    def print_last_fail(cls, failed):
         for k, v in failed[-1].items():
             print(k)
             print(v)
 
-    def create_formset_post_data(self, response, post_data={}):
+    @classmethod
+    def create_formset_post_data(cls, response, post_data={}):
         post_data = {**post_data}
         formset_keys = [key for key in response.context.keys() if 'formset' in key and response.context[key]]
 
@@ -858,7 +917,7 @@ class GenericBaseMixin(object):
             for index, form in enumerate(formset.forms):
                 form_prefix = f'{prefix}{index}-'
                 default_form_data = {key.replace(form_prefix, ''): value for key, value in post_data.items() if key.startswith(form_prefix)}
-                post_data.update({f'{form_prefix}{key}': value for key, value in self.generate_form_data(form, default_form_data).items()})
+                post_data.update({f'{form_prefix}{key}': value for key, value in cls.generate_form_data(form, default_form_data).items()})
 
         return post_data
 
