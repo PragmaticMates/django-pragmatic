@@ -44,7 +44,10 @@ def translate_url(context, lang, *args, **kwargs):
 
         if context_object:
             with override_language(lang):
-                return context_object.get_absolute_url()
+                get_absolute_url = getattr(context_object, "get_absolute_url", None)
+
+                if get_absolute_url and callable(get_absolute_url):
+                    return context_object.get_absolute_url()
 
         # URL path
         # path = context['request'].path
