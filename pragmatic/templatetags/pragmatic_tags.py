@@ -24,19 +24,19 @@ register = template.Library()
 def translate_url(context, lang, *args, **kwargs):
     path = kwargs.get('path', None)
     object = kwargs.get('object', None)
-    callable = kwargs.get('callable', None)
+    callable_object = kwargs.get('callable', None)
 
-    if path and (object or callable):
+    if path and (object or callable_object):
         raise ValueError('"path" argument can not be used together with "object" or "callable"')
 
-    if object and not callable or callable and not object:
+    if object and not callable_object or callable_object and not object:
         raise ValueError('Both "object" or "callable" has to be defined')
 
     if not path:
         # custom object
         if object:
             with override_language(lang):
-                path = getattr(object, callable)()
+                path = getattr(object, callable_object)()
                 return django_translate_url(path, lang)
 
         # context object
