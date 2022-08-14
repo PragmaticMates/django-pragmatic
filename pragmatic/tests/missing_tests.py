@@ -121,7 +121,7 @@ class MissingTestMixin(GenericBaseMixin):
             # test filter class test existence
             self.assertTrue(cls.__name__ in tested_class_names, f'{cls.__module__}.{cls.__name__} test missing')
 
-        app_names = [app.name for app in self.apps_to_check]
+        app_names = [app.name for app in self.apps_to_check()]
 
         for app_name in app_names:
             managers_to_test = set()
