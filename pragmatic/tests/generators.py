@@ -50,21 +50,24 @@ if 'gm2m' in getattr(settings, 'INSTALLED_APPS'):
 
 
 class GenericBaseMixin(object):
-    # USER_MODEL = User
+    # USER_MODEL = User # there is possibility to manualy specify user model to be used, see user_model()
     objs = OrderedDict()
     TEST_PASSWORD = 'testpassword'
     RAISE_EVERY_TIME = False
-    IGNORE_MODEL_FIELDS = {}
-    RUN_ONLY_THESE_URL_NAMES = []  # for debug purposes to save time
-    RUN_URL_NAMES_CONTAINING = []
-    IGNORE_URL_NAMES_CONTAINING = []
-    POST_ONLY_URLS = []
-    GET_ONLY_URLS = []
+    IGNORE_MODEL_FIELDS = {}    # values for these model fields will not be generated, use for fields with automatically assigned values, for example {MPTTModel: ['lft', 'rght', 'tree_id', 'level']}
+
+    # params for GenericTestMixin.test_urls
+    RUN_ONLY_THESE_URL_NAMES = []  # if not empty will run tests only for provided urls, for debug purposes to save time
+    RUN_URL_NAMES_CONTAINING = []  # if not empty will run tests only for urls containing at least one of provided patterns
+    IGNORE_URL_NAMES_CONTAINING = []    # contained urls will not be tested
+    POST_ONLY_URLS = [] # run only post request tests for these urls
+    GET_ONLY_URLS = []  # run only get request tests for these urls
 
     @classmethod
     def manual_model_dependency(cls):
         '''
-        for example required by model_field_values_map
+        Use to manually specify model dependency which are not accounted for by default (check get_sorted_models_dependency output),
+        for example if generating objs with provided m2m values, or otherwise required in model_field_values_map
         return {
             User: {Group}
         }
@@ -74,13 +77,22 @@ class GenericBaseMixin(object):
 
     @classmethod
     def model_field_values_map(cls):
-        '''{
+        '''
+        Enables generate objects with specific values, for example for User model:
+
+        {
             User: {
-                'my_user': {
+                'user_1': {
                     'username': lambda self: f'user.{GenericTestMixin.next_id(User)}@example.com',
                     'email': lambda self: f'user.{GenericTestMixin.next_id(User)}@example.com',
                     'password': 'testpassword',
                     'is_superuser': True,
+                },
+                'user_1': {
+                    'username': lambda self: f'user.{GenericTestMixin.next_id(User)}@example.com',
+                    'email': lambda self: f'user.{GenericTestMixin.next_id(User)}@example.com',
+                    'password': 'testpassword',
+                    'is_superuser': False,
                 }
             },
         }
@@ -96,7 +108,10 @@ class GenericBaseMixin(object):
 
     @classmethod
     def default_field_map(cls):
-        # values can be callables with with field variable
+        '''
+        field values by field class used to generate objects, values can be callables with field variable,
+        extend in subclass as needed
+        '''
         return {
             ForeignKey: lambda f: cls.get_generated_obj(f.related_model),
             OneToOneField: lambda f: cls.get_generated_obj(f.related_model),
@@ -132,7 +147,10 @@ class GenericBaseMixin(object):
 
     @classmethod
     def default_form_field_map(cls):
-        # values can be callables with with field variable
+        '''
+        field values by form field class used to generate form values, values can be callables with field variable,
+        extend in subclass as needed
+        '''
         return {
             django_filter_fields.ModelChoiceField: lambda f: f.queryset.first().id,
             django_filter_fields.ModelMultipleChoiceField: lambda f: f.queryset.first().id,
@@ -175,6 +193,9 @@ class GenericBaseMixin(object):
 
     @classmethod
     def import_modules_if_needed(cls):
+        '''
+        import all modules encountered if some where not yet imported, for example when searching for models dependency or urls in source code
+        '''
         module_names = cls.get_submodule_names(cls.CHECK_MODULES, cls.CHECK_MODULES, cls.EXCLUDE_MODULES)
 
         for module_name in module_names:
@@ -197,12 +218,14 @@ class GenericBaseMixin(object):
 
     @classmethod
     def apps_to_check(cls):
+        '''
+        return all the apps to to be tested, or used to look for models dependency
+        '''
         return [app for app in apps.get_app_configs() if app.name.startswith(tuple(cls.CHECK_MODULES))]
 
     @classmethod
     def get_module_class_methods(cls, module):
-        # get classes defined in module, not imported
-        classes = cls.get_module_classes(module)
+        classes = cls.get_module_classes(module)    # get not imported classes defined in module
         methods = set()
 
         for cls in classes:
@@ -212,16 +235,24 @@ class GenericBaseMixin(object):
 
     @classmethod
     def get_module_classes(cls, module):
+        '''
+        returns only not imported classes defined in module
+        '''
         return {m[1] for m in inspect.getmembers(module, inspect.isclass) if m[1].__module__ == module.__name__}
 
     @classmethod
     def get_module_functions(cls, module):
+        '''
+        returns only not imported functions defined in module
+        '''
         return {m[1] for m in inspect.getmembers(module, inspect.isfunction) if m[1].__module__ == module.__name__}
 
     @classmethod
     def get_submodule_names(cls, parent_module_names, submodule_names, exclude_names=[]):
-        # looks for submodules of parent_module containing submodule_name and not containing any of exclude_names,
-        # which are not package (files, not dirs)
+        '''
+        looks for submodules of parent_module containing submodule_name and not containing any of exclude_names,
+        which are not package (files, not dirs)
+        '''
         module_names = set()
 
         if isinstance(parent_module_names, str):
@@ -249,6 +280,9 @@ class GenericBaseMixin(object):
 
     @classmethod
     def parse_args(cls, args, eval_args=True, eval_kwargs=True):
+        '''
+        parsing args and kwargs as specified
+        '''
         args = 'f({})'.format(args)
         tree = ast.parse(args)
         funccall = tree.body[0].value
@@ -276,6 +310,9 @@ class GenericBaseMixin(object):
 
     @classmethod
     def get_generated_email(cls, model=None):
+        '''
+        shortuct to get genrated email
+        '''
         if model is None:
             model = cls.user_model()
 
@@ -1384,8 +1421,7 @@ class GenericTestMixin(object):
                                             self.assertEqual(obj_count_after, obj_count_before)
                                         elif issubclass(view_class, DeleteView):
                                             self.assertEqual(obj_count_after, obj_count_before - 1)
-                                            # recreate obj
-                                            self.generate_model_objs(view_class.model)
+                                            # recreate obj is not necessary because of transaction rollback
 
                                     except Exception as e:
                                         # for key, value in init_form_kwargs.items():
@@ -1424,7 +1460,7 @@ class GenericTestMixin(object):
 
         if failed:
             # append failed count at the end of error list
-            failed.append('{}/{} urls FAILED'.format(len(failed), len(tested)))
+            failed.append('{}/{} urls FAILED: {}'.format(len(failed), len(tested), ', '.join([f['url name'] for f in failed])))
 
         self.assertFalse(failed, msg=pformat(failed, indent=4))
 
