@@ -40,7 +40,9 @@ from django.test import RequestFactory
 from django.urls import reverse
 from django.utils.timezone import now
 from django.views.generic import CreateView, UpdateView, DeleteView
-import internationalflavor
+from internationalflavor import iban as if_iban
+from internationalflavor import vat_number as if_vat
+from internationalflavor import countries as if_countries
 
 from pragmatic import fields as pragmatic_fields
 
@@ -120,10 +122,8 @@ class GenericBaseMixin(object):
             CharField: lambda f: list(f.choices)[0][0] if f.choices else '{}_{}'.format(f.model._meta.label_lower, f.name)[:f.max_length],
             SlugField: lambda f: '{}_{}'.format(f.name, cls.next_id(f.model)),
             EmailField: lambda f: '{}.{}@example.com'.format(f.model._meta.label_lower, cls.next_id(f.model)),
-            internationalflavor.countries.CountryField: 'LU',
             gis_models.PointField: Point(0.1276, 51.5072),
             gis_models.MultiPointField: MultiPoint(Point(0.1276, 51.5072), Point(0.1276, 51.5072)),
-            internationalflavor.vat_number.VATNumberField: lambda f: 'LU{}'.format(random.randint(10000000, 99999999)),  # 'GB904447273',
             DateTimeField: lambda f: now(),
             DateField: lambda f: now().date(),
             postgres_fields.DateTimeRangeField: (now(), now() + timedelta(days=1)),
@@ -142,7 +142,9 @@ class GenericBaseMixin(object):
             postgres_fields.ArrayField: lambda f: [cls.default_field_map()[f.base_field.__class__](f.base_field)],
             JSONField: {},
             URLField: lambda f: f'www.google.com',
-            internationalflavor.iban.IBANField: 'LU28 0019 4006 4475 0000',
+            if_countries.CountryField: 'LU',
+            if_iban.IBANField: 'LU28 0019 4006 4475 0000',
+            if_vat.VATNumberField: lambda f: 'LU{}'.format(random.randint(10000000, 99999999)),  # 'GB904447273',
         }
 
     @classmethod
@@ -186,9 +188,9 @@ class GenericBaseMixin(object):
             pragmatic_fields.AlwaysValidChoiceField: lambda f: list(f.choices)[-1][0] if f.choices else '{}'.format(f.label),
             pragmatic_fields.AlwaysValidMultipleChoiceField: lambda f: f'{list(f.choices)[-1][0]}' if f.choices else '{}'.format(f.label),
             pragmatic_fields.SliderField: lambda f: f'{f.min},{f.max}' if f.has_range else f'{f.min}',
-            internationalflavor.countries.CountryFormField: 'LU',  # random.choice(UN_RECOGNIZED_COUNTRIES),
-            internationalflavor.iban.IBANFormField: 'LU28 0019 4006 4475 0000',
-            internationalflavor.vat_number.VATNumberFormField: lambda f: 'LU{}'.format(random.randint(10000000, 99999999)),  # 'GB904447273',
+            if_countries.CountryFormField: 'LU',  # random.choice(UN_RECOGNIZED_COUNTRIES),
+            if_iban.IBANFormField: 'LU28 0019 4006 4475 0000',
+            if_vat.VATNumberFormField: lambda f: 'LU{}'.format(random.randint(10000000, 99999999)),  # 'GB904447273',
         }
 
     @classmethod
