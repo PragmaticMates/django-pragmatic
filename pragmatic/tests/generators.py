@@ -90,7 +90,7 @@ class GenericBaseMixin(object):
                     'password': 'testpassword',
                     'is_superuser': True,
                 },
-                'user_1': {
+                'user_2': {
                     'username': lambda self: f'user.{GenericTestMixin.next_id(User)}@example.com',
                     'email': lambda self: f'user.{GenericTestMixin.next_id(User)}@example.com',
                     'password': 'testpassword',
