@@ -326,12 +326,45 @@ class GenericBaseMixin(object):
 
     @classmethod
     def get_mock_request(cls, **kwargs):
-        request = RequestFactory().get('/')
+        return cls.get_request('/', **kwargs)
+
+    @classmethod
+    def get_request(cls, path='/', **kwargs):
+        request = RequestFactory().get(path)
 
         for key, value in kwargs.items():
             setattr(request, key, value)
 
         return request
+
+    @classmethod
+    def get_response(cls, **kwargs):
+        # return view_class.as_view(**view_kwargs)(request) response for request=RequestFactory.get() with additional request_attributes
+        path = kwargs.get('path', '/')
+        view_class = kwargs.get('view_class', None)
+        view_kwargs = kwargs.get('view_kwargs', {})
+        request_kwargs = kwargs.get('request_atrributes', {})
+
+        if view_class is None:
+            # get from urls.py
+            raise ValueError('view_class not specified')
+
+        request = cls.get_request(path, **request_kwargs)
+        return view_class.as_view(**view_kwargs)(request)
+
+    @classmethod
+    def get_response_view(cls, **kwargs):
+        response = cls.get_response(**kwargs)
+        return response.context_data['view']
+
+    @classmethod
+    def get_response_view_as_filter_function(cls, **kwargs):
+        # returns function for specific response view as function of filter kwargs in url,
+        def filter_function(**filter_kargs):
+            kwargs['path'] = kwargs.get('path', '/') + '?' + '&'.join([f'{key}={value}' for key, value in filter_kargs.items()])
+            return cls.get_response_view(**kwargs)
+
+        return filter_function
 
     @classmethod
     def generate_kwargs(cls, args=[], kwargs={}, func=None, default={}):
