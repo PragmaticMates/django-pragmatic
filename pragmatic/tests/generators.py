@@ -39,6 +39,7 @@ from django.http import QueryDict
 from django.test import RequestFactory
 from django.urls import reverse
 from django.utils.timezone import now
+from django.utils.translation import ugettext_lazy
 from django.views.generic import CreateView, UpdateView, DeleteView
 from internationalflavor import iban as if_iban
 from internationalflavor import vat_number as if_vat
@@ -1313,28 +1314,32 @@ class GenericTestMixin(object):
                                 form_kwargs = params_map.get('form_kwargs', self.generate_func_args(form_class.__init__))
                                 form_kwargs = {key: value(self) if callable(value) else value for key,value in form_kwargs.items()}
                                 form_kwargs['data'] = data
-                                init_form_kwargs = self.init_form_kwargs(form_class)
                                 form = None
 
-                                try:
-                                    form = form_class(**init_form_kwargs)
-                                except Exception as e:
-                                    if not isinstance(form, form_class) or not hasattr(form, 'fields'):
-                                        # as long as there is form instance with fields its enough to generate data
-                                        failed.append(OrderedDict({
-                                            'location': 'POST FORM INIT',
-                                            'url name': path_name,
-                                            'url': path,
-                                            'url pattern': url_pattern,
-                                            'parsed args': parsed_args,
-                                            'form class': form_class,
-                                            'form kwargs': init_form_kwargs,
-                                            'traceback': traceback.format_exc()
-                                        }))
-                                        if raise_every_time:
-                                            self.print_last_fail(failed)
-                                            raise
-                                        continue
+                                if path_name not in self.POST_ONLY_URLS and 'form' in get_response.context_data
+                                    form = get_response.context_data['form']
+                                else:
+                                    init_form_kwargs = self.init_form_kwargs(form_class)
+
+                                    try:
+                                        form = form_class(**init_form_kwargs)
+                                    except Exception as e:
+                                        if not isinstance(form, form_class) or not hasattr(form, 'fields'):
+                                            # as long as there is form instance with fields its enough to generate data
+                                            failed.append(OrderedDict({
+                                                'location': 'POST FORM INIT',
+                                                'url name': path_name,
+                                                'url': path,
+                                                'url pattern': url_pattern,
+                                                'parsed args': parsed_args,
+                                                'form class': form_class,
+                                                'form kwargs': init_form_kwargs,
+                                                'traceback': traceback.format_exc()
+                                            }))
+                                            if raise_every_time:
+                                                self.print_last_fail(failed)
+                                                raise
+                                            continue
 
                                 query_dict_data = QueryDict('', mutable=True)
 
@@ -1370,7 +1375,7 @@ class GenericTestMixin(object):
                                     response = self.client.post(path=path, data=form_kwargs['data'], follow=True)
                                     self.assertEqual(response.status_code, 200)
                                 except ValidationError as e:
-                                    if e.message == 'ManagementForm data is missing or has been tampered with':
+                                    if e.message == ugettext_lazy('ManagementForm data is missing or has been tampered with'):
                                         post_data = QueryDict('', mutable=True)
 
                                         try:
