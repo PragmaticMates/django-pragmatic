@@ -1316,7 +1316,7 @@ class GenericTestMixin(object):
                                 form_kwargs['data'] = data
                                 form = None
 
-                                if path_name not in self.POST_ONLY_URLS and 'form' in get_response.context_data
+                                if path_name not in self.POST_ONLY_URLS and 'form' in get_response.context_data:
                                     form = get_response.context_data['form']
                                 else:
                                     init_form_kwargs = self.init_form_kwargs(form_class)
