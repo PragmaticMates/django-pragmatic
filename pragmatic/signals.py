@@ -168,6 +168,10 @@ class SignalsHelper(object):
 
     @staticmethod
     def attribute_changed(instance, diff_fields, diff_contains={}):
+        '''
+        diff_fields: list of field names
+        diff_contains: either {field_name: [vaue_1, value_2, ...]} or {field_name: {'from': [old_value_1, ...], 'to': [new_value_1, ...]}}
+        '''
         obj = SignalsHelper.get_db_instance(instance)
 
         if not obj:
@@ -186,12 +190,31 @@ class SignalsHelper(object):
                 except KeyError:
                     return True
 
-                if not isinstance(diff_values, list):
-                    diff_values = [diff_values]
+                if isinstance(diff_values, dict):
+                    from_values = diff_values.get('from', [])
+                    to_values = diff_values.get('to', [])
 
-                for diff_value in diff_values:
-                    # check if one of supplied field values was included
-                    if diff_value in [saved_value, instance_value]:
+                    if from_values and to_values:
+                        # from and to values provided
+                        if saved_value in from_values and instance_value in to_values:
+                            return True
+                    elif from_values:
+                        # only from values provided
+                        if saved_value in from_values:
+                            return True
+                    elif to_values:
+                        # only to values provided
+                        if instance_value in to_values:
+                            return True
+                    else:
+                        # empty dict provided
+                        return True
+                elif isinstance(diff_values, list):
+                    if not diff_values:
+                        # empty list provided
+                        return True
+                    elif saved_value in diff_values or instance_value in diff_values:
+                        # either old or new value is in provided values
                         return True
 
         return False
