@@ -440,6 +440,10 @@ class GenericBaseMixin(object):
 
     @classmethod
     def generate_form_data(cls, form, default_data):
+        if inspect.isclass(form):
+            # if class is passed try to get instance
+            form = form(**cls.init_form_kwargs(form, {}))
+
         data = {}
 
         for name, field in default_data.items():
@@ -928,19 +932,22 @@ class GenericBaseMixin(object):
         '''
         return {}
 
-    def init_form_kwargs(self, form_class, default={}):
+    @classmethod
+    def init_form_kwargs(cls, form_class, default={}):
         '''{
             UserForm: {'user': cls.get_generated_obj(User)},
         }
         '''
-        return {}.get(form_class, self.generate_func_args(form_class.__init__, default))
+        return {}.get(form_class, cls.generate_func_args(form_class.__init__, default))
 
-    def init_filter_kwargs(self, filter_class, default={}):
+
+    @classmethod
+    def init_filter_kwargs(cls, filter_class, default={}):
         '''{
             UserFitler: {'queryset': User.objects.all()}
         }
         '''
-        return {}.get(filter_class, self.generate_func_args(filter_class.__init__, default=default))
+        return {}.get(filter_class, cls.generate_func_args(filter_class.__init__, default=default))
 
     @classmethod
     def setUpTestData(cls):
