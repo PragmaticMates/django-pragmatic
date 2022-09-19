@@ -111,6 +111,17 @@ class GenericBaseMixin(object):
             return get_user_model()
 
     @classmethod
+    def default_field_name_map(cls):
+        '''
+        field values by field name used to generate objects, values can be callables with field variable,
+        extend in subclass as needed
+        '''
+        return {
+            'year': now().year,
+            'month': now().month,
+        }
+
+    @classmethod
     def default_field_map(cls):
         '''
         field values by field class used to generate objects, values can be callables with field variable,
@@ -704,7 +715,10 @@ class GenericBaseMixin(object):
                 field_value = field.default
 
                 if inspect.isclass(field.default) and issubclass(field.default, NOT_PROVIDED) or field.default is None or field_value in [list]:
-                    field_value = cls.default_field_map().get(field.__class__, None)
+                    field_value = cls.default_field_name_map().get(field.name, None)
+
+                    if field_value is None:
+                        field_value = cls.default_field_map().get(field.__class__, None)
 
                     if callable(field_value):
                         field_value = field_value(field)
