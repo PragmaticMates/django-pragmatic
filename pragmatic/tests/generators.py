@@ -2,6 +2,7 @@ import ast
 import functools
 import importlib
 import inspect
+import itertools
 import os
 import pkgutil
 import random
@@ -110,6 +111,17 @@ class GenericBaseMixin(object):
             return get_user_model()
 
     @classmethod
+    def default_field_name_map(cls):
+        '''
+        field values by field name used to generate objects, values can be callables with field variable,
+        extend in subclass as needed
+        '''
+        return {
+            'year': now().year,
+            'month': now().month,
+        }
+
+    @classmethod
     def default_field_map(cls):
         '''
         field values by field class used to generate objects, values can be callables with field variable,
@@ -120,7 +132,7 @@ class GenericBaseMixin(object):
             OneToOneField: lambda f: cls.get_generated_obj(f.related_model),
             BooleanField: False,
             TextField: lambda f: '{}_{}'.format(f.model._meta.label_lower, f.name),
-            CharField: lambda f: list(f.choices)[0][0] if f.choices else '{}_{}'.format(f.model._meta.label_lower, f.name)[:f.max_length],
+            CharField: lambda f: list(f.choices)[0][0] if f.choices else '{}'.format(f.name)[:f.max_length],
             SlugField: lambda f: '{}_{}'.format(f.name, cls.next_id(f.model)),
             EmailField: lambda f: '{}.{}@example.com'.format(f.model._meta.label_lower, cls.next_id(f.model)),
             gis_models.PointField: Point(0.1276, 51.5072),
@@ -696,14 +708,17 @@ class GenericBaseMixin(object):
         ignore_model_fields = cls.IGNORE_MODEL_FIELDS.get(model, [])
         field_values = dict(field_values)
         m2m_values = {}
+        unique_fields = list(itertools.chain(*model._meta.unique_together))
 
         for field in not_related_fields:
             if field.name not in ignore_model_fields and field.name not in field_values and (not isinstance(field, ManyToManyField)):
                 field_value = field.default
 
-                if inspect.isclass(field.default) and issubclass(field.default,
-                                                                 NOT_PROVIDED) or field.default is None or field_value in [list]:
-                    field_value = cls.default_field_map().get(field.__class__, None)
+                if inspect.isclass(field.default) and issubclass(field.default, NOT_PROVIDED) or field.default is None or field_value in [list]:
+                    field_value = cls.default_field_name_map().get(field.name, None)
+
+                    if field_value is None:
+                        field_value = cls.default_field_map().get(field.__class__, None)
 
                     if callable(field_value):
                         field_value = field_value(field)
@@ -715,6 +730,9 @@ class GenericBaseMixin(object):
                 if field_value is None:
                     raise ValueError(
                         'Don\'t know ho to generate {}.{} value {}'.format(model._meta.label, field.name, field_value))
+
+                if isinstance(field, CharField) and field.name in unique_fields and not field.choices:
+                    field_value = f'{field_value}_{cls.next_id(model)}'
 
                 field_values[field.name] = field_value
 
@@ -781,7 +799,7 @@ class GenericBaseMixin(object):
 
         field_values = field_values(cls) if callable(field_values) else field_values
         field_values, m2m_values = cls.generate_model_field_values(model, field_values)
-        post_save = field_values.pop('post_save', None)
+        post_save = field_values.pop('post_save', [])
 
         if model == cls.user_model():
             if hasattr(cls, 'create_user'):
@@ -800,8 +818,8 @@ class GenericBaseMixin(object):
         for m2m_attr, m2m_value in m2m_values.items():
             getattr(obj, m2m_attr).set(m2m_value)
 
-        if post_save:
-            post_save(obj)
+        for action in post_save:
+            action(obj)
 
         return obj
 
