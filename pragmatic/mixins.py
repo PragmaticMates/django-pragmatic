@@ -9,6 +9,7 @@ from django.contrib.auth.mixins import PermissionRequiredMixin as DjangoPermissi
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import PermissionDenied
 from django.core.validators import EMPTY_VALUES
+from django.core.paginator import EmptyPage, Paginator
 from django.db.models import F
 from django.db.models.deletion import ProtectedError
 from django.http.response import HttpResponseRedirect, HttpResponse
@@ -272,9 +273,21 @@ class FPDFMixin(object):
         pass
 
 
+class SafePaginator(Paginator):
+    def validate_number(self, number):
+        try:
+            return super(SafePaginator, self).validate_number(number)
+        except EmptyPage:
+            if number > 1:
+                return self.num_pages
+            else:
+                raise
+
+
 class DisplayListViewMixin(object):
     displays = []
     paginate_by_display = {}
+    paginator_class = SafePaginator
 
     def dispatch(self, request, *args, **kwargs):
         self.eval_get_paginate_by(request)
