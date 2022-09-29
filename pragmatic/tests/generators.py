@@ -52,7 +52,6 @@ if 'gm2m' in getattr(settings, 'INSTALLED_APPS'):
     from gm2m import GM2MField
 
 
-
 class GenericBaseMixin(object):
     # USER_MODEL = User # there is possibility to manualy specify user model to be used, see user_model()
     objs = OrderedDict()
@@ -731,7 +730,7 @@ class GenericBaseMixin(object):
                     raise ValueError(
                         'Don\'t know ho to generate {}.{} value {}'.format(model._meta.label, field.name, field_value))
 
-                if isinstance(field, CharField) and field.name in unique_fields and not field.choices:
+                if isinstance(field, CharField) and (field.name in unique_fields or field.unique) and not field.choices:
                     field_value = f'{field_value}_{cls.next_id(model)}'
 
                 field_values[field.name] = field_value
@@ -769,17 +768,21 @@ class GenericBaseMixin(object):
     def generate_model_objs(cls, model):
         # required_fields = cls.get_models_fields(model, required_only=True)
         # related_fields = cls.get_models_fields(model, related_only=True)
-        model_obj_values_map = cls.model_field_values_map().get(model, {model._meta.label_lower.replace('.', '_'): {}})
+        model_obj_values_map = cls.model_field_values_map().get(model, {cls.default_object_name(model): {}})
         new_objs = []
 
         for obj_name, obj_values in model_obj_values_map.items():
             obj = cls.objs.get(obj_name, None)
 
+            if obj and obj._meta.model != model:
+                obj_name = model._meta.label_lower
+                obj = cls.objs.get(obj_name, None)
+
             if obj:
                 try:
                     obj.refresh_from_db()
                 except model.DoesNotExist:
-                    obj=None
+                    obj = None
 
             if not obj:
                 obj = cls.generate_obj(model, obj_values)
@@ -824,7 +827,17 @@ class GenericBaseMixin(object):
         return obj
 
     @classmethod
-    def get_generated_obj(cls, model, obj_name=None):
+    def default_object_name(cls, model):
+        # app_name, default_name = model._meta.label.split('.')
+        # default_name = re.findall(r'.+?(?:(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])|$)', default_name)
+        # default_name = '_'.join(default_name).lower()
+        return model._meta.label_lower.split('.')[-1]
+
+    @classmethod
+    def get_generated_obj(cls, model=None, obj_name=None):
+        if model is None and obj_name is None:
+            raise Exception(f'At least one argument is necessary')
+
         if obj_name is None:
             if model._meta.proxy:
                 model = model._meta.concrete_model
@@ -837,10 +850,10 @@ class GenericBaseMixin(object):
                 else:
                     obj_name = sorted(list(cls.model_field_values_map()[model].keys()))[0]
 
-            if obj_name not in cls.objs:
-                obj_name = model._meta.label_lower.replace('.', '_')
+            if obj_name not in cls.objs.keys():
+                obj_name = cls.default_object_name(model)
 
-        obj =  cls.objs.get(obj_name, None)
+        obj = cls.objs.get(obj_name, None)
 
         if obj:
             try:
@@ -849,6 +862,12 @@ class GenericBaseMixin(object):
                 obj = None
 
         if not obj:
+            if model is None:
+                for obj_model, objs in cls.model_field_values_map().items():
+                    if obj_name in objs.keys():
+                        model = obj_model
+                        break
+
             cls.generate_model_objs(model)
             obj = cls.objs.get(obj_name, None)
 
@@ -958,7 +977,6 @@ class GenericBaseMixin(object):
         '''
         return {}.get(form_class, cls.generate_func_args(form_class.__init__, default))
 
-
     @classmethod
     def init_filter_kwargs(cls, filter_class, default={}):
         '''{
@@ -1018,7 +1036,6 @@ class GenericBaseMixin(object):
                 post_data.update({f'{form_prefix}{key}': value for key, value in cls.generate_form_data(form, default_form_data).items()})
 
         return post_data
-
 
 
 class GenericTestMixin(object):
@@ -1285,7 +1302,6 @@ class GenericTestMixin(object):
                                         self.print_last_fail(failed)
                                         raise
 
-
                         if hasattr(view_class, 'displays'):
                             displays = params_map.get('displays', view_class.displays)
 
@@ -1337,7 +1353,7 @@ class GenericTestMixin(object):
                                 form_class = view_class.form_class
                                 view_model = view_class.model if hasattr(view_class, 'model') else form_class.model if hasattr(form_class, 'model') else None
                                 form_kwargs = params_map.get('form_kwargs', self.generate_func_args(form_class.__init__))
-                                form_kwargs = {key: value(self) if callable(value) else value for key,value in form_kwargs.items()}
+                                form_kwargs = {key: value(self) if callable(value) else value for key, value in form_kwargs.items()}
                                 form_kwargs['data'] = data
                                 form = None
 
@@ -1659,7 +1675,6 @@ class GenericTestMixin(object):
                         self.print_last_fail(failed)
                         raise
                     continue
-
 
                 try:
                     queryset = init_kwargs.get('queryset', filter_class._meta.model._default_manager.all() if filter_class._meta.model else None)
