@@ -774,6 +774,10 @@ class GenericBaseMixin(object):
         for obj_name, obj_values in model_obj_values_map.items():
             obj = cls.objs.get(obj_name, None)
 
+            if obj and obj._meta.model != model:
+                obj_name = model._meta.label_lower
+                obj = cls.objs.get(obj_name, None)
+
             if obj:
                 try:
                     obj.refresh_from_db()
@@ -824,10 +828,10 @@ class GenericBaseMixin(object):
 
     @classmethod
     def default_object_name(cls, model):
-        app_name, default_name = model._meta.label.split('.')
-        default_name = re.findall(r'.+?(?:(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])|$)', default_name)
-        default_name = '_'.join(default_name).lower()
-        return default_name
+        # app_name, default_name = model._meta.label.split('.')
+        # default_name = re.findall(r'.+?(?:(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])|$)', default_name)
+        # default_name = '_'.join(default_name).lower()
+        return model._meta.label_lower.split('.')[-1]
 
     @classmethod
     def get_generated_obj(cls, model=None, obj_name=None):
