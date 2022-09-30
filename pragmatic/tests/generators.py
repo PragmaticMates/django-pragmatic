@@ -856,6 +856,8 @@ class GenericBaseMixin(object):
         obj = cls.objs.get(obj_name, None)
 
         if obj:
+            model = obj._meta.model
+
             try:
                 obj.refresh_from_db()
             except model.DoesNotExist:
