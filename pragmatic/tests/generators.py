@@ -85,15 +85,15 @@ class GenericBaseMixin(object):
 
         {
             User: {
-                'user_1': {
-                    'username': lambda self: f'user.{GenericTestMixin.next_id(User)}@example.com',
-                    'email': lambda self: f'user.{GenericTestMixin.next_id(User)}@example.com',
+                'user_1': lambda cls: {
+                    'username': f'user.{cls.next_id(User)}@example.com',
+                    'email': f'user.{cls.next_id(User)}@example.com',
                     'password': 'testpassword',
                     'is_superuser': True,
                 },
-                'user_2': {
-                    'username': lambda self: f'user.{GenericTestMixin.next_id(User)}@example.com',
-                    'email': lambda self: f'user.{GenericTestMixin.next_id(User)}@example.com',
+                'user_2': lambda cls: {
+                    'username': f'user.{cls.next_id(User)}@example.com',
+                    'email': f'user.{cls.next_id(User)}@example.com',
                     'password': 'testpassword',
                     'is_superuser': False,
                 }
@@ -104,6 +104,9 @@ class GenericBaseMixin(object):
 
     @classmethod
     def user_model(cls):
+        '''
+        User model used for login and permissions
+        '''
         try:
             return cls.USER_MODEL
         except:
@@ -112,8 +115,8 @@ class GenericBaseMixin(object):
     @classmethod
     def default_field_name_map(cls):
         '''
-        field values by field name used to generate objects, values can be callables with field variable,
-        extend in subclass as needed
+        field values by field name used to generate objects, this has priority before default_field_map,
+        values can be callables with field variable, extend in subclass as needed
         '''
         return {
             'year': now().year,
