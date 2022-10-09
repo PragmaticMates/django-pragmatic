@@ -56,7 +56,6 @@ class GenericBaseMixin(object):
     # USER_MODEL = User # there is possibility to manualy specify user model to be used, see user_model()
     objs = OrderedDict()
     TEST_PASSWORD = 'testpassword'
-    RAISE_EVERY_TIME = False
     IGNORE_MODEL_FIELDS = {}    # values for these model fields will not be generated, use for fields with automatically assigned values, for example {MPTTModel: ['lft', 'rght', 'tree_id', 'level']}
 
     # params for GenericTestMixin.test_urls
@@ -1048,501 +1047,513 @@ class GenericTestMixin(object):
     Only containing generic tests
     eveything else, setup methods etc., is in GenericBaseMixin
     '''
-    def test_urls(self):
-        raise_every_time = self.RAISE_EVERY_TIME
 
+    def prepare_url(self, path_name, path_params, params_map, models, fields):
+        '''
+        generates url arguments if not provided, saves them in params_map['parsed'],
+        returns url with args and list of fail messages
+        '''
+        fails = []
+        path = path_name
+        url_pattern = path_params["url_pattern"]
+        args = re.findall(r'<([:\w]+)>', url_pattern)
+        view_class = path_params['view_class']
+        parsed_args = params_map.get('args', None)
+
+        if parsed_args is None or not args:
+            parsed_args = []
+
+        if args and not parsed_args:
+            params_map['parsed'] = []
+            # parse args from path params
+            view_model = view_class.model if hasattr(view_class, 'model') else None
+
+            if view_model is None:
+                matching_models = [model for model in models if
+                                   path_name.split(':')[-1].startswith(model._meta.label_lower.split(".")[-1])]
+
+                if len(matching_models) == 1:
+                    view_model = matching_models[0]
+
+            for arg in args:
+                matching_fields = []
+
+                if arg in ['int:pk', 'pk']:
+                    matching_fields = [('pk', view_model)]
+                else:
+                    type, name = arg.split(':') if ':' in arg else ('int', arg)
+
+                    if type not in ['int', 'str', 'slug']:
+                        fails.append(OrderedDict({
+                            'location': 'URL ARG TYPE',
+                            'url name': path_name,
+                            'url pattern': url_pattern,
+                            'arg': arg,
+                            'traceback': 'Cant handle this arg type'
+                        }))
+                        continue
+
+                    if name.endswith('_pk'):
+                        # model name
+                        matching_fields = [('pk', model) for model in models if
+                                           name == '{}_pk'.format(model._meta.label_lower.split(".")[-1])]
+
+                        if len(matching_fields) != 1:
+                            # match field  model
+                            matching_fields = [('pk', model) for model in models if name == '{}_pk'.format(
+                                model._meta.verbose_name.lower().replace(' ', '_'))]
+
+                    else:
+                        # full name and type match
+                        matching_fields = [(field, model) for field, model in fields if
+                                           field.name == name and isinstance(field, IntegerField if type == 'int' else (
+                                           CharField, BooleanField))]
+
+                        if len(matching_fields) > 1:
+                            # match field  model
+                            matching_fields = [(field, model) for field, model in matching_fields if
+                                               model == view_model]
+
+                        elif not matching_fields:
+                            # full name match
+                            matching_fields = [(field, model) for field, model in fields if
+                                               field.name == name and not model._meta.proxy]
+
+                            if not matching_fields:
+                                # match name in form model_field to model and field
+                                matching_fields = [(field, model) for field, model in fields if
+                                                   name == '{}_{}'.format(model._meta.label_lower.split(".")[-1],
+                                                                          field.name)]
+
+                            if not matching_fields:
+                                # this might make problems as only partial match is made
+                                matching_fields = [(p[0], view_model) for p in
+                                                   inspect.getmembers(view_model, lambda o: isinstance(o, property)) if
+                                                   p[0].startswith(name)]
+
+                            if not matching_fields:
+                                # name is contained in field.name of view model
+                                matching_fields = [(field, model) for field, model in fields if
+                                                   model == view_model and name in field.name]
+
+                if len(matching_fields) != 1 or matching_fields[0][1] is None:
+                    fails.append(OrderedDict({
+                        'location': 'URL ARG MATCH',
+                        'url name': path_name,
+                        'url pattern': url_pattern,
+                        'arg': arg,
+                        'matching fields': matching_fields,
+                        'traceback': 'Url arg mathcing failed'
+                    }))
+                    continue
+
+                attr_name, model = matching_fields[0]
+
+                if not isinstance(attr_name, str):
+                    # its Field object
+                    attr_name = attr_name.name
+
+                obj = self.get_generated_obj(model)
+
+                if obj is None:
+                    obj = self.generate_model_objs(model)
+
+                obj = self.get_generated_obj(model)
+                arg_value = getattr(obj, attr_name, None)
+
+                if arg_value in [True, False]:
+                    arg_value = str(arg_value)
+
+                if arg_value is None:
+                    fails.append(OrderedDict({
+                        'location': 'URL ARG PARSE',
+                        'url name': path_name,
+                        'url pattern': url_pattern,
+                        'arg': arg,
+                        'parsed arg': arg_value,
+                        'traceback': 'Url arg parsing failed'
+                    }))
+                    continue
+
+                parsed_args.append(arg_value)
+                params_map['parsed'].append({'obj': obj, 'attr_name': attr_name, 'value': arg_value})
+
+        if len(args) != len(parsed_args):
+            fails.append(OrderedDict({
+                'location': 'URL ARGS PARSED',
+                'url name': path_name,
+                'url pattern': url_pattern,
+                'args': args,
+                'parsed args': parsed_args,
+                'traceback': 'Url args parsing failed'
+            }))
+        else:
+            path = reverse(path_name, args=parsed_args)
+            kwargs = params_map.get('kwargs', {})
+
+            if kwargs:
+                kwargs = '&'.join([f'{key}={value}' for key, value in kwargs.items()])
+                path = f'{path}?{kwargs}'
+
+        return path, parsed_args, fails
+
+    def get_namespace(self, path_params, module_name):
+        module_namespace = module_name.replace('.urls', '').split('.')[-1]
+        app_name = path_params['app_name']
+        path_name = path_params['path_name']
+        fails = []
+
+        namespaces = [namespace for namespace, namespace_path_names in self.get_url_namespace_map().items() if
+                      namespace.endswith(module_namespace) and path_name in namespace_path_names]
+
+        if not namespaces:
+            namespaces = [namespace for namespace, namespace_path_names in self.get_url_namespace_map().items() if
+                          namespace.endswith(app_name) and path_name in namespace_path_names]
+
+        if not namespaces:
+            namespaces = [namespace for namespace, namespace_path_names in self.get_url_namespace_map().items() if
+                          path_name in namespace_path_names]
+
+        if len(namespaces) != 1:
+            fails.append(OrderedDict({
+                'location': 'NAMESPACE',
+                'url name': path_params["path_name"],
+                'app_name': app_name,
+                'module': module_name,
+                'matching namespaces': namespaces,
+                'traceback': 'Namespace matching failed'
+            }))
+
+        return namespaces[0], fails
+
+    def skip_url(self, url_name):
+        if self.RUN_ONLY_THESE_URL_NAMES and url_name not in self.RUN_ONLY_THESE_URL_NAMES:
+            # print('SKIP')
+            return True
+
+        if self.RUN_URL_NAMES_CONTAINING and not url_name.endswith(
+                tuple(self.RUN_URL_NAMES_CONTAINING)) and not url_name.startswith(
+                tuple(self.RUN_URL_NAMES_CONTAINING)):
+            # print('SKIP')
+            return True
+
+        if url_name.endswith(tuple(self.IGNORE_URL_NAMES_CONTAINING)) or url_name.startswith(
+                tuple(self.IGNORE_URL_NAMES_CONTAINING)):
+            # print('SKIP')
+            return True
+
+        return False
+
+    def get_url_tes(self, path_name, path, parsed_args, url_pattern, view_class, params_map):
+        fails = []
+        data = params_map.get('data', {})
+
+        try:
+            get_response = self.client.get(path=path, data=data, follow=True)
+            self.assertEqual(get_response.status_code, 200)
+        except Exception as e:
+            fails.append(OrderedDict({
+                'location': 'GET',
+                'url name': path_name,
+                'url': path,
+                'url pattern': url_pattern,
+                'parsed args': parsed_args,
+                'view class': view_class,
+                'traceback': traceback.format_exc()
+            }))
+            return None, fails
+
+        if hasattr(view_class, 'sorting_options'):  # and isinstance(view_class.sorting_options, dict):
+            sorting_options = params_map.get('sorting_options', [])
+
+            if not sorting_options:
+                sorting_options = view_class.sorting_options.keys()
+
+            for sorting in sorting_options:
+                data['sorting'] = sorting
+
+                try:
+                    response = self.client.get(path=path, data=data, follow=True)
+                    self.assertEqual(response.status_code, 200)
+                except Exception as e:
+                    fails.append(OrderedDict({
+                        'location': 'SORTING',
+                        'url name': path_name,
+                        'url': path,
+                        'url pattern': url_pattern,
+                        'parsed args': parsed_args,
+                        'data': data,
+                        'traceback': traceback.format_exc()
+                    }))
+
+        if hasattr(view_class, 'displays'):
+            displays = params_map.get('displays', view_class.displays)
+
+            for display in displays:
+                data['display'] = display
+
+                try:
+                    response = self.client.get(path=path, data=data, follow=True)
+                    self.assertEqual(response.status_code, 200)
+                except Exception as e:
+                    fails.append(OrderedDict({
+                        'location': 'DISPLAY',
+                        'url name': path_name,
+                        'url': path,
+                        'url pattern': url_pattern,
+                        'parsed args': parsed_args,
+                        'data': data,
+                        'traceback': traceback.format_exc()
+                    }))
+                else:
+                    if hasattr(response, 'template_name'):
+                        template = response.template_name[-1] if isinstance(response.template_name,
+                                                                            list) else response.template_name
+
+                        try:
+                            self.assertTrue(template.endswith('{}.html'.format(display)))
+                        except Exception as e:
+                            fails.append(OrderedDict({
+                                'location': 'TEMPLATE',
+                                'url name': path_name,
+                                'url': path,
+                                'url pattern': url_pattern,
+                                'parsed args': parsed_args,
+                                'data': data,
+                                'template': template,
+                                'traceback': traceback.format_exc()
+                            }))
+        return get_response, fails
+
+    def post_url_test(self, path_name, path, parsed_args, url_pattern, view_class, params_map, get_response):
+        fails = []
+        data = params_map.get('data', {})
+
+        try:
+            with transaction.atomic():
+                form_class = view_class.form_class
+                view_model = view_class.model if hasattr(view_class, 'model') else form_class.model if hasattr(
+                    form_class, 'model') else None
+                form_kwargs = params_map.get('form_kwargs', self.generate_func_args(form_class.__init__))
+                form_kwargs = {key: value(self) if callable(value) else value for key, value in form_kwargs.items()}
+                form_kwargs['data'] = data
+                form = None
+
+                if path_name not in self.POST_ONLY_URLS and 'form' in get_response.context_data:
+                    form = get_response.context_data['form']
+                else:
+                    init_form_kwargs = self.init_form_kwargs(form_class)
+
+                    try:
+                        form = form_class(**init_form_kwargs)
+                    except Exception as e:
+                        if not isinstance(form, form_class) or not hasattr(form, 'fields'):
+                            # as long as there is form instance with fields its enough to generate data
+                            fails.append(OrderedDict({
+                                'location': 'POST FORM INIT',
+                                'url name': path_name,
+                                'url': path,
+                                'url pattern': url_pattern,
+                                'parsed args': parsed_args,
+                                'form class': form_class,
+                                'form kwargs': init_form_kwargs,
+                                'traceback': traceback.format_exc()
+                            }))
+                            return fails
+
+                query_dict_data = QueryDict('', mutable=True)
+
+                try:
+                    query_dict_data.update(self.generate_form_data(form, data))
+                except Exception as e:
+                    fails.append(OrderedDict({
+                        'location': 'POST GENERATING FORM DATA',
+                        'url name': path_name,
+                        'url': path,
+                        'url pattern': url_pattern,
+                        'parsed args': parsed_args,
+                        'form class': form_class,
+                        'default form data': data,
+                        'traceback': traceback.format_exc()
+                    }))
+                    return fails
+
+                if not view_model:
+                    return fails
+
+                form_kwargs['data'] = query_dict_data
+                obj_count_before = 0
+
+                if issubclass(view_class, (CreateView, UpdateView, DeleteView)):
+                    obj_count_before = view_model.objects.all().count()
+
+                try:
+                    response = self.client.post(path=path, data=form_kwargs['data'], follow=True)
+                    self.assertEqual(response.status_code, 200)
+                except ValidationError as e:
+                    if e.message == ugettext_lazy('ManagementForm data is missing or has been tampered with'):
+                        post_data = QueryDict('', mutable=True)
+
+                        try:
+                            post_data.update(self.create_formset_post_data(get_response, data))
+                        except Exception as e:
+                            fails.append(OrderedDict({
+                                'location': 'POST GENERATING FORMSET DATA',
+                                'url name': path_name,
+                                'url': path,
+                                'url pattern': url_pattern,
+                                'parsed args': parsed_args,
+                                'form class': form_class,
+                                'default form data': data,
+                                'post data': post_data,
+                                'traceback': traceback.format_exc()
+                            }))
+                            return fails
+
+                        try:
+                            response = self.client.post(path=path, data=post_data, follow=True)
+                            self.assertEqual(response.status_code, 200)
+                        except Exception as e:
+                            fails.append(OrderedDict({
+                                'location': 'POST FORMSET',
+                                'url name': path_name,
+                                'url': path,
+                                'url pattern': url_pattern,
+                                'parsed args': parsed_args,
+                                'form class': form_class,
+                                'data': form_kwargs['data'],
+                                'post data': post_data,
+                                'form': form,
+                                'traceback': traceback.format_exc()
+                            }))
+                            return fails
+                    else:
+                        fails.append(OrderedDict({
+                            'location': 'POST',
+                            'url name': path_name,
+                            'url': path,
+                            'url pattern': url_pattern,
+                            'parsed args': parsed_args,
+                            'form class': form_class,
+                            'data': form_kwargs['data'],
+                            'form': form,
+                            'traceback': traceback.format_exc()
+                        }))
+                        return fails
+
+                except Exception as e:
+                    fails.append(OrderedDict({
+                        'location': 'POST',
+                        'url name': path_name,
+                        'url': path,
+                        'url pattern': url_pattern,
+                        'parsed args': parsed_args,
+                        'form class': form_class,
+                        'data': form_kwargs['data'],
+                        'form': form,
+                        'traceback': traceback.format_exc()
+                    }))
+                    return fails
+
+                if issubclass(view_class, (CreateView, UpdateView, DeleteView)):
+                    obj_count_after = view_model.objects.all().count()
+
+                    try:
+                        if issubclass(view_class, CreateView):
+                            self.assertEqual(obj_count_after, obj_count_before + 1)
+                        elif issubclass(view_class, UpdateView):
+                            self.assertEqual(obj_count_after, obj_count_before)
+                        elif issubclass(view_class, DeleteView):
+                            self.assertEqual(obj_count_after, obj_count_before - 1)
+                            # recreate obj is not necessary because of transaction rollback
+
+                    except Exception as e:
+                        # for key, value in init_form_kwargs.items():
+                        #     if key not in form_kwargs:
+                        #         form_kwargs[key] = value
+
+                        # form = form_class(**form_kwargs)
+                        form = response.context_data.get('form', None)
+
+                        fails.append(OrderedDict({
+                            'location': 'POST COUNT',
+                            'url name': path_name,
+                            'url': path,
+                            'url pattern': url_pattern,
+                            'parsed args': parsed_args,
+                            'view model': view_class.model,
+                            'form class': form_class,
+                            # 'form': form,
+                            'form valid': form.is_valid() if form else None,
+                            'form errors': form.errors if form else None,
+                            'data': form_kwargs['data'],
+                            'traceback': traceback.format_exc()
+                        }))
+                        return fails
+
+                # rollback post action
+                raise IntegrityError('No problem')
+
+        except IntegrityError as e:
+            if e.args[0] != 'No problem':
+                raise
+        except Exception:
+            raise
+
+        return fails
+
+    def test_urls(self):
         models = self.get_models()
         fields = [(f, model) for model in models for f in model._meta.get_fields() if f.concrete and not f.auto_created]
         failed = []
         tested = []
         for module_name, module_params in self.get_url_views_by_module().items():
-            module_namespace = module_name.replace('.urls', '').split('.')[-1]
-
             for path_params in module_params:
                 # print(path_params)
-                app_name = path_params['app_name']
                 path = path_name = path_params['path_name']
-                # path_namespace, path_name = path_params['path_name'].split(':')
 
-                namespaces = [namespace for namespace, namespace_path_names in self.get_url_namespace_map().items() if
-                              namespace.endswith(module_namespace) and path_name in namespace_path_names]
+                namespace, fails = self.get_namespace(path_params, module_name)
 
-                if not namespaces:
-                    namespaces = [namespace for namespace, namespace_path_names in self.get_url_namespace_map().items() if
-                                  namespace.endswith(app_name) and path_name in namespace_path_names]
-
-                if not namespaces:
-                    namespaces = [namespace for namespace, namespace_path_names in self.get_url_namespace_map().items() if
-                                  path_name in namespace_path_names]
-
-                if len(namespaces) != 1:
-                    failed.append(OrderedDict({
-                        'location': 'NAMESPACE',
-                        'url name': path_params["path_name"],
-                        'app_name': app_name,
-                        'module': module_name,
-                        'matching namespaces': namespaces,
-                        'traceback': 'Namespace matching failed'
-                    }))
-                    if raise_every_time:
-                        self.print_last_fail(failed)
-                        raise
+                if fails:
+                    failed.extend(fails)
                     continue
 
-                path_name = '{}:{}'.format(namespaces[0], path_name) if namespaces[0] else path_name
+                path = path_name = '{}:{}'.format(namespace, path_name) if namespace else path_params['path_name']
 
-                if self.RUN_ONLY_THESE_URL_NAMES and path_name not in self.RUN_ONLY_THESE_URL_NAMES:
-                    # print('SKIP')
-                    continue
-
-                if self.RUN_URL_NAMES_CONTAINING and not path_name.endswith(tuple(self.RUN_URL_NAMES_CONTAINING)) and not path_name.startswith(tuple(self.RUN_URL_NAMES_CONTAINING)):
-                    # print('SKIP')
-                    continue
-
-                if path_name.endswith(tuple(self.IGNORE_URL_NAMES_CONTAINING)) or path_name.startswith(tuple(self.IGNORE_URL_NAMES_CONTAINING)):
-                    # print('SKIP')
+                if self.skip_url(path_name):
                     continue
 
                 print(path_params)
                 tested.append(path_params)
                 url_pattern = path_params["url_pattern"]
-                args = re.findall(r'<([:\w]+)>', url_pattern)
+                view_class = path_params['view_class']
                 params_maps = self.url_params_map.get(path_name, {'default': {}})
 
                 for map_name, params_map in params_maps.items():
                     parsed_args = params_map.get('args', None)
-                    view_class = path_params['view_class']
-
-                    if len(params_maps) > 1 and parsed_args is not None and len(args) != len(parsed_args):
-                        # when there are mmultiple params maps provided match by arguments length
-                        continue
-
-                    if parsed_args is None or not args:
-                        parsed_args = []
-
-                    if args and not parsed_args:
-                        params_map['parsed'] = []
-                        # parse args from path params
-                        view_model = view_class.model if hasattr(view_class, 'model') else None
-
-                        if view_model is None:
-                            matching_models = [model for model in models if
-                                               path_name.split(':')[-1].startswith(model._meta.label_lower.split(".")[-1])]
-
-                            if len(matching_models) == 1:
-                                view_model = matching_models[0]
-
-                        for arg in args:
-                            matching_fields = []
-
-                            if arg in ['int:pk', 'pk']:
-                                matching_fields = [('pk', view_model)]
-                            else:
-                                type, name = arg.split(':') if ':' in arg else ('int', arg)
-
-                                if type not in ['int', 'str', 'slug']:
-                                    failed.append(OrderedDict({
-                                        'location': 'URL ARG TYPE',
-                                        'url name': path_name,
-                                        'url': path,
-                                        'url pattern': url_pattern,
-                                        'arg': arg,
-                                        'traceback': 'Cant handle this arg type'
-                                    }))
-                                    if raise_every_time:
-                                        self.print_last_fail(failed)
-                                        raise
-                                    continue
-
-                                if name.endswith('_pk'):
-                                    # model name
-                                    matching_fields = [('pk', model) for model in models if name == '{}_pk'.format(model._meta.label_lower.split(".")[-1])]
-
-                                    if len(matching_fields) != 1:
-                                        # match field  model
-                                        matching_fields = [('pk', model) for model in models if name == '{}_pk'.format(model._meta.verbose_name.lower().replace(' ', '_'))]
-
-                                else:
-                                    # full name and type match
-                                    matching_fields = [(field, model) for field, model in fields if
-                                                       field.name == name and isinstance(field, IntegerField if type == 'int' else (CharField, BooleanField))]
-
-                                    if len(matching_fields) > 1:
-                                        # match field  model
-                                        matching_fields = [(field, model) for field, model in matching_fields if model == view_model]
-
-                                    elif not matching_fields:
-                                        # full name match
-                                        matching_fields = [(field, model) for field, model in fields if field.name == name and not model._meta.proxy]
-
-                                        if not matching_fields:
-                                            # match name in form model_field to model and field
-                                            matching_fields = [(field, model) for field, model in fields if
-                                                               name == '{}_{}'.format(model._meta.label_lower.split(".")[-1], field.name)]
-
-                                        if not matching_fields:
-                                            # this might make problems as only partial match is made
-                                            matching_fields = [(p[0], view_model) for p in inspect.getmembers(view_model, lambda o: isinstance(o, property)) if p[0].startswith(name)]
-
-                                        if not matching_fields:
-                                            # name is contained in field.name of view model
-                                            matching_fields = [(field, model) for field, model in fields if model == view_model and name in field.name]
-
-                            if len(matching_fields) != 1 or matching_fields[0][1] is None:
-                                failed.append(OrderedDict({
-                                    'location': 'URL ARG MATCH',
-                                    'url name': path_name,
-                                    'url': path,
-                                    'url pattern': url_pattern,
-                                    'arg': arg,
-                                    'matching fields': matching_fields,
-                                    'traceback': 'Url arg mathcing failed'
-                                }))
-                                if raise_every_time:
-                                    self.print_last_fail(failed)
-                                    raise
-                                continue
-
-                            attr_name, model = matching_fields[0]
-
-                            if not isinstance(attr_name, str):
-                                # its Field object
-                                attr_name = attr_name.name
-
-                            obj = self.get_generated_obj(model)
-
-                            if obj is None:
-                                obj = self.generate_model_objs(model)
-
-                            obj = self.get_generated_obj(model)
-                            arg_value = getattr(obj, attr_name, None)
-
-                            if arg_value in [True, False]:
-                                arg_value = str(arg_value)
-
-                            if arg_value is None:
-                                failed.append(OrderedDict({
-                                    'location': 'URL ARG PARSE',
-                                    'url name': path_name,
-                                    'url': path,
-                                    'url pattern': url_pattern,
-                                    'arg': arg,
-                                    'parsed arg': arg_value,
-                                    'traceback': 'Url arg parsing failed'
-                                }))
-                                if raise_every_time:
-                                    self.print_last_fail(failed)
-                                    raise
-                                continue
-
-                            parsed_args.append(arg_value)
-                            params_map['parsed'].append({'obj': obj, 'attr_name': attr_name, 'value': arg_value})
-
-                    if len(args) != len(parsed_args):
-                        failed.append(OrderedDict({
-                            'location': 'URL ARGS PARSED',
-                            'url name': path_name,
-                            'url': path,
-                            'url pattern': url_pattern,
-                            'args': args,
-                            'parsed args': parsed_args,
-                            'traceback': 'Url args parsing failed'
-                        }))
-                        if raise_every_time:
-                            self.print_last_fail(failed)
-                            raise
-                        continue
-
-                    path = reverse(path_name, args=parsed_args)
                     data = params_map.get('data', {})
-                    kwargs = params_map.get('kwargs', {})
 
-                    if kwargs:
-                        kwargs = '&'.join([f'{key}={value}' for key, value in kwargs.items()])
-                        path = f'{path}?{kwargs}'
+                    path, parsed_args, fails = self.prepare_url(path_name, path_params, params_map, models, fields)
+
+                    if fails:
+                        failed.extend(fails)
+                        continue
 
                     # GET url
                     if not path_name in self.POST_ONLY_URLS:
-                        try:
-                            get_response = self.client.get(path=path, data=data, follow=True)
-                            self.assertEqual(get_response.status_code, 200)
-                        except Exception as e:
-                            failed.append(OrderedDict({
-                                'location': 'GET',
-                                'url name': path_name,
-                                'url': path,
-                                'url pattern': url_pattern,
-                                'parsed args': parsed_args,
-                                'view class': view_class,
-                                'traceback': traceback.format_exc()
-                            }))
-                            if raise_every_time:
-                                self.print_last_fail(failed)
-                                raise
+                        get_response, fails = self.get_url_tes(path_name, path, parsed_args, url_pattern, view_class, params_map)
+
+                        if fails:
+                            failed.extend(fails)
                             continue
-
-                        if hasattr(view_class, 'sorting_options'):  # and isinstance(view_class.sorting_options, dict):
-                            sorting_options = params_map.get('sorting_options', [])
-
-                            if not sorting_options:
-                                sorting_options = view_class.sorting_options.keys()
-
-                            for sorting in sorting_options:
-                                data['sorting'] = sorting
-
-                                try:
-                                    response = self.client.get(path=path, data=data, follow=True)
-                                    self.assertEqual(response.status_code, 200)
-                                except Exception as e:
-                                    failed.append(OrderedDict({
-                                        'location': 'SORTING',
-                                        'url name': path_name,
-                                        'url': path,
-                                        'url pattern': url_pattern,
-                                        'parsed args': parsed_args,
-                                        'data': data,
-                                        'traceback': traceback.format_exc()
-                                    }))
-                                    if raise_every_time:
-                                        self.print_last_fail(failed)
-                                        raise
-
-                        if hasattr(view_class, 'displays'):
-                            displays = params_map.get('displays', view_class.displays)
-
-                            for display in displays:
-                                data['display'] = display
-
-                                try:
-                                    response = self.client.get(path=path, data=data, follow=True)
-                                    self.assertEqual(response.status_code, 200)
-                                except Exception as e:
-                                    failed.append(OrderedDict({
-                                        'location': 'DISPLAY',
-                                        'url name': path_name,
-                                        'url': path,
-                                        'url pattern': url_pattern,
-                                        'parsed args': parsed_args,
-                                        'data': data,
-                                        'traceback': traceback.format_exc()
-                                    }))
-                                    if raise_every_time:
-                                        self.print_last_fail(failed)
-                                        raise
-                                else:
-                                    if hasattr(response, 'template_name'):
-                                        template = response.template_name[-1] if isinstance(response.template_name,
-                                                                                            list) else response.template_name
-
-                                        try:
-                                            self.assertTrue(template.endswith('{}.html'.format(display)))
-                                        except Exception as e:
-                                            failed.append(OrderedDict({
-                                                'location': 'TEMPLATE',
-                                                'url name': path_name,
-                                                'url': path,
-                                                'url pattern': url_pattern,
-                                                'parsed args': parsed_args,
-                                                'data': data,
-                                                'template': template,
-                                                'traceback': traceback.format_exc()
-                                            }))
-                                            if raise_every_time:
-                                                self.print_last_fail(failed)
-                                                raise
 
                     # POST url
                     if path_name not in self.GET_ONLY_URLS and getattr(view_class, 'form_class', None):
-                        try:
-                            with transaction.atomic():
-                                form_class = view_class.form_class
-                                view_model = view_class.model if hasattr(view_class, 'model') else form_class.model if hasattr(form_class, 'model') else None
-                                form_kwargs = params_map.get('form_kwargs', self.generate_func_args(form_class.__init__))
-                                form_kwargs = {key: value(self) if callable(value) else value for key, value in form_kwargs.items()}
-                                form_kwargs['data'] = data
-                                form = None
+                        fails = self.post_url_test(path_name, path, parsed_args, url_pattern, view_class, params_map, get_response)
 
-                                if path_name not in self.POST_ONLY_URLS and 'form' in get_response.context_data:
-                                    form = get_response.context_data['form']
-                                else:
-                                    init_form_kwargs = self.init_form_kwargs(form_class)
-
-                                    try:
-                                        form = form_class(**init_form_kwargs)
-                                    except Exception as e:
-                                        if not isinstance(form, form_class) or not hasattr(form, 'fields'):
-                                            # as long as there is form instance with fields its enough to generate data
-                                            failed.append(OrderedDict({
-                                                'location': 'POST FORM INIT',
-                                                'url name': path_name,
-                                                'url': path,
-                                                'url pattern': url_pattern,
-                                                'parsed args': parsed_args,
-                                                'form class': form_class,
-                                                'form kwargs': init_form_kwargs,
-                                                'traceback': traceback.format_exc()
-                                            }))
-                                            if raise_every_time:
-                                                self.print_last_fail(failed)
-                                                raise
-                                            continue
-
-                                query_dict_data = QueryDict('', mutable=True)
-
-                                try:
-                                    query_dict_data.update(self.generate_form_data(form, data))
-                                except Exception as e:
-                                    failed.append(OrderedDict({
-                                        'location': 'POST GENERATING FORM DATA',
-                                        'url name': path_name,
-                                        'url': path,
-                                        'url pattern': url_pattern,
-                                        'parsed args': parsed_args,
-                                        'form class': form_class,
-                                        'default form data': data,
-                                        'traceback': traceback.format_exc()
-                                    }))
-
-                                    if raise_every_time:
-                                        self.print_last_fail(failed)
-                                        raise
-                                    continue
-
-                                if not view_model:
-                                    continue
-
-                                form_kwargs['data'] = query_dict_data
-                                obj_count_before = 0
-
-                                if issubclass(view_class, (CreateView, UpdateView, DeleteView)):
-                                    obj_count_before = view_model.objects.all().count()
-
-                                try:
-                                    response = self.client.post(path=path, data=form_kwargs['data'], follow=True)
-                                    self.assertEqual(response.status_code, 200)
-                                except ValidationError as e:
-                                    if e.message == ugettext_lazy('ManagementForm data is missing or has been tampered with'):
-                                        post_data = QueryDict('', mutable=True)
-
-                                        try:
-                                            post_data.update(self.create_formset_post_data(get_response, data))
-                                        except Exception as e:
-                                            failed.append(OrderedDict({
-                                                'location': 'POST GENERATING FORMSET DATA',
-                                                'url name': path_name,
-                                                'url': path,
-                                                'url pattern': url_pattern,
-                                                'parsed args': parsed_args,
-                                                'form class': form_class,
-                                                'default form data': data,
-                                                'post data': post_data,
-                                                'traceback': traceback.format_exc()
-                                            }))
-
-                                            if raise_every_time:
-                                                self.print_last_fail(failed)
-                                                raise
-                                            continue
-
-                                        try:
-                                            response = self.client.post(path=path, data=post_data, follow=True)
-                                            self.assertEqual(response.status_code, 200)
-                                        except Exception as e:
-                                            failed.append(OrderedDict({
-                                                'location': 'POST FORMSET',
-                                                'url name': path_name,
-                                                'url': path,
-                                                'url pattern': url_pattern,
-                                                'parsed args': parsed_args,
-                                                'form class': form_class,
-                                                'data': form_kwargs['data'],
-                                                'post data': post_data,
-                                                'form': form,
-                                                'traceback': traceback.format_exc()
-                                            }))
-                                            if raise_every_time:
-                                                self.print_last_fail(failed)
-                                                raise
-                                            continue
-                                    else:
-                                        failed.append(OrderedDict({
-                                            'location': 'POST',
-                                            'url name': path_name,
-                                            'url': path,
-                                            'url pattern': url_pattern,
-                                            'parsed args': parsed_args,
-                                            'form class': form_class,
-                                            'data': form_kwargs['data'],
-                                            'form': form,
-                                            'traceback': traceback.format_exc()
-                                        }))
-                                        if raise_every_time:
-                                            self.print_last_fail(failed)
-                                            raise
-                                        continue
-                                except Exception as e:
-                                    failed.append(OrderedDict({
-                                        'location': 'POST',
-                                        'url name': path_name,
-                                        'url': path,
-                                        'url pattern': url_pattern,
-                                        'parsed args': parsed_args,
-                                        'form class': form_class,
-                                        'data': form_kwargs['data'],
-                                        'form': form,
-                                        'traceback': traceback.format_exc()
-                                    }))
-                                    if raise_every_time:
-                                        self.print_last_fail(failed)
-                                        raise
-                                    continue
-
-                                if issubclass(view_class, (CreateView, UpdateView, DeleteView)):
-                                    obj_count_after = view_model.objects.all().count()
-
-                                    try:
-                                        if issubclass(view_class, CreateView):
-                                            self.assertEqual(obj_count_after, obj_count_before + 1)
-                                        elif issubclass(view_class, UpdateView):
-                                            self.assertEqual(obj_count_after, obj_count_before)
-                                        elif issubclass(view_class, DeleteView):
-                                            self.assertEqual(obj_count_after, obj_count_before - 1)
-                                            # recreate obj is not necessary because of transaction rollback
-
-                                    except Exception as e:
-                                        # for key, value in init_form_kwargs.items():
-                                        #     if key not in form_kwargs:
-                                        #         form_kwargs[key] = value
-
-                                        # form = form_class(**form_kwargs)
-                                        form = response.context_data.get('form', None)
-
-                                        failed.append(OrderedDict({
-                                            'location': 'POST COUNT',
-                                            'url name': path_name,
-                                            'url': path,
-                                            'url pattern': url_pattern,
-                                            'parsed args': parsed_args,
-                                            'view model': view_class.model,
-                                            'form class': form_class,
-                                            # 'form': form,
-                                            'form valid': form.is_valid() if form else None,
-                                            'form errors': form.errors if form else None,
-                                            'data': form_kwargs['data'],
-                                            'traceback': traceback.format_exc()
-                                        }))
-                                        if raise_every_time:
-                                            self.print_last_fail(failed)
-                                            raise
-
-                                # rollback post action
-                                raise IntegrityError('No problem')
-
-                        except IntegrityError as e:
-                            if e.args[0] != 'No problem':
-                                raise
-                        except Exception:
-                            raise
+                        if fails:
+                            failed.extend(fails)
+                            continue
 
         if failed:
             # append failed count at the end of error list
@@ -1626,8 +1637,6 @@ class GenericTestMixin(object):
         self.assertFalse(failed, msg=pformat(failed, indent=4))
 
     def test_filters(self):
-        raise_every_time = self.RAISE_EVERY_TIME
-
         module_names = self.get_submodule_names(self.CHECK_MODULES, ['filters', 'forms'], self.EXCLUDE_MODULES)
         filter_classes = set()
         failed = []
@@ -1659,9 +1668,6 @@ class GenericTestMixin(object):
                         'params map': params_map,
                         'traceback': traceback.format_exc()
                     }))
-                    if raise_every_time:
-                        self.print_last_fail(failed)
-                        raise
                     continue
 
                 query_dict_data = QueryDict('', mutable=True)
@@ -1676,9 +1682,6 @@ class GenericTestMixin(object):
                         'params map': params_map,
                         'traceback': traceback.format_exc()
                     }))
-                    if raise_every_time:
-                        self.print_last_fail(failed)
-                        raise
                     continue
 
                 try:
@@ -1690,9 +1693,6 @@ class GenericTestMixin(object):
                         'params map': params_map,
                         'traceback': traceback.format_exc()
                     }))
-                    if raise_every_time:
-                        self.print_last_fail(failed)
-                        raise
                     continue
 
                 if queryset:
@@ -1710,9 +1710,6 @@ class GenericTestMixin(object):
                         'params map': params_map,
                         'traceback': traceback.format_exc()
                     }))
-                    if raise_every_time:
-                        self.print_last_fail(failed)
-                        raise
                     continue
 
         if failed:

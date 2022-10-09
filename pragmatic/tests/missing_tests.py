@@ -223,7 +223,20 @@ class MissingTestMixin(GenericBaseMixin):
         self.assertEqual(commented_asserts, [], f'There are som commented asserts')
 
     def test_for_missing_permissions(self):
-        explicit_permission_occurances = self.get_explicit_permissions_by_module(parent_module_names=self.CHECK_MODULES, submodule_names=self.CHECK_MODULES, exclude=self.EXCLUDE_MODULES)
+        '''
+        permission is counted as tested if there is test which name contains path to file where permission is used and is containing line in this format "permission = 'app_name.permission_name'",
+        for example:
+
+        def test_path_to_file_containing_permission_irelevant_testname(self):
+            permission = 'accounts.user_change'
+            permission = 'accounts.user_delete'
+
+        will see 'accounts.user_change' and 'accounts.user_delete' used anywhere in file 'path.to.file.containing.permission.py' as tested and will not mark them as missing
+        '''
+
+        explicit_permission_occurances = self.get_explicit_permissions_by_module(parent_module_names=self.CHECK_MODULES,
+                                                                                 submodule_names=self.CHECK_MODULES,
+                                                                                 exclude=self.EXCLUDE_MODULES)
         explicit_permissions = {}
         tested_permissions = {}
 
@@ -243,7 +256,7 @@ class MissingTestMixin(GenericBaseMixin):
 
         # get permission tests, derive location of tested permission occurance from test name and put into dict
         for test in tests:
-            permission_name = re.findall(r'permission = \'[a-z]+.[a-z_]+\'', inspect.getsource(test))[0].replace('permission = ', '')[1:-1]
+            permission_names = re.findall(r'(?:[ \t]*\#*[ \t]*)permission = \'[a-z]+.[a-z_]+\'', inspect.getsource(test))
             path = re.findall(r'permission_path = \'[a-z_.]+\'', inspect.getsource(test))
             path = path[0].replace('permission_path = ', '')[1:-1] if path else None
 
@@ -261,7 +274,7 @@ class MissingTestMixin(GenericBaseMixin):
                         new_path = test_name.replace('_', '.', i)
 
                     # try to include next underscore, to look for files with underscore in name
-                    alternative_path = test_name.replace('_', '.', i+1)
+                    alternative_path = test_name.replace('_', '.', i + 1)
                     alternative_path = alternative_path[:alternative_path.rfind('.')]
                     alternative_path = '_'.join(alternative_path.rsplit('.', 1))
 
@@ -272,12 +285,19 @@ class MissingTestMixin(GenericBaseMixin):
                     else:
                         break
 
-            if permission_name not in tested_permissions:
-                tested_permissions[permission_name] = {}
-                explicit_permissions[permission_name] = {}
+            for permission_name in permission_names:
+                if '#' in permission_name:
+                    # skip commented lines
+                    continue
 
-            if not any([exclude_name in path for exclude_name in self.EXCLUDE_MODULES]):
-                tested_permissions[permission_name][path].append(test.__name__)
+                permission_name = permission_name.lstrip().replace('permission = ', '')[1:-1]
+
+                if permission_name not in tested_permissions:
+                    tested_permissions[permission_name] = {}
+                    explicit_permissions[permission_name] = {}
+
+                if not any([exclude_name in path for exclude_name in self.EXCLUDE_MODULES]):
+                    tested_permissions[permission_name][path].append(test.__name__)
 
         failed = []
 
