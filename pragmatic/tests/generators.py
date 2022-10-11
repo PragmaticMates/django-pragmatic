@@ -1056,7 +1056,7 @@ class GenericTestMixin(object):
         fails = []
         path = path_name
         url_pattern = path_params["url_pattern"]
-        args = re.findall(r'<([:\w]+)>', url_pattern)
+        args = path_params['args']
         view_class = path_params['view_class']
         parsed_args = params_map.get('args', None)
 
@@ -1531,7 +1531,12 @@ class GenericTestMixin(object):
 
                 for map_name, params_map in params_maps.items():
                     parsed_args = params_map.get('args', None)
-                    data = params_map.get('data', {})
+                    args = re.findall(r'<([:\w]+)>', url_pattern)
+                    path_params['args'] = args
+
+                    if len(params_maps) > 1 and parsed_args is not None and len(args) != len(parsed_args):
+                        # when there are mmultiple params maps provided match by arguments length
+                        continue
 
                     path, parsed_args, fails = self.prepare_url(path_name, path_params, params_map, models, fields)
 
