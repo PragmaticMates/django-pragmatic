@@ -1,3 +1,4 @@
+from django.db.models import Aggregate, FloatField
 from django.db.models.expressions import Func, Expression
 from pragmatic.models.expressions import F, Value
 
@@ -50,3 +51,10 @@ class ArrayPositions(SimpleFunc):
 
 class ArrayLength(SimpleFunc):
     function = 'ARRAY_LENGTH'
+
+
+class Median(Aggregate):
+    function = 'PERCENTILE_CONT'
+    name = 'median'
+    output_field = FloatField()
+    template = '%(function)s(0.5) WITHIN GROUP (ORDER BY %(expressions)s)'
