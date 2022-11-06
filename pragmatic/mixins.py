@@ -1,4 +1,5 @@
 import datetime
+import inspect
 import io
 
 import requests
@@ -10,11 +11,13 @@ from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import PermissionDenied
 from django.core.validators import EMPTY_VALUES
 from django.core.paginator import EmptyPage, Paginator
-from django.db.models import F
+from django.db.models import F, QuerySet
 from django.db.models.deletion import ProtectedError
 from django.http.response import HttpResponseRedirect, HttpResponse
 from django.shortcuts import redirect
 from django.utils import timezone
+from django.utils.functional import cached_property
+from django.utils.inspect import method_has_no_args
 from django.utils.text import slugify
 from django.utils.translation import ugettext_lazy as _, ugettext
 
@@ -274,6 +277,19 @@ class FPDFMixin(object):
 
 
 class SafePaginator(Paginator):
+    def __init__(self, object_list, per_page, orphans=0, allow_empty_first_page=True, count_only_id=False):
+        super().__init__(object_list, per_page, orphans, allow_empty_first_page)
+        self.count_only_id = count_only_id
+
+    @cached_property
+    def count(self):
+        """Return the total number of objects, across all pages, count only id if objectlist is queryset"""
+        object_list = self.object_list.only('id') if isinstance(self.object_list, QuerySet) and self.count_only_id else self.object_list
+        c = getattr(object_list, 'count', None)
+        if callable(c) and not inspect.isbuiltin(c) and method_has_no_args(c):
+            return c()
+        return len(object_list)
+
     def validate_number(self, number):
         try:
             return super(SafePaginator, self).validate_number(number)
@@ -305,6 +321,9 @@ class DisplayListViewMixin(object):
         display = self.request.GET.get('display', self.displays[0])
         display = display if display in self.displays else self.displays[0]
         return display
+
+    def get_paginator(self, queryset, per_page, orphans=0, allow_empty_first_page=True, **kwargs):
+        return super().get_paginator(queryset, per_page, orphans=0, allow_empty_first_page=True, count_only_id=getattr(self, 'paginator_count_only_id', False), **kwargs)
 
     def get_paginate_by(self, queryset):
         """
