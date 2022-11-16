@@ -217,7 +217,16 @@ def filtered_values(filter, request_data):
                     # choice field
                     try:
                         if not hasattr(filter_field, 'queryset'):
-                            value = dict(form.fields[filter_name].choices)[value]
+                            choices = form.fields[filter_name].choices
+
+                            choices_dict = None
+                            if hasattr(choices, 'choices'):
+                                choices = choices.choices
+                                if isinstance(value, str):
+                                    choices_dict = {str(key): val for key, val in choices}
+
+                            choices_dict = choices_dict if choices_dict is not None else dict(choices)
+                            value = choices_dict[value]
                     except (KeyError, AttributeError):
                         pass
 
