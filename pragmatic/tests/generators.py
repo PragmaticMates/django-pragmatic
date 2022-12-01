@@ -735,7 +735,7 @@ class GenericBaseMixin(object):
                 if isinstance(field, CharField) and (field.name in unique_fields or field.unique) and not field.choices:
                     field_value = f'{field_value}_{cls.next_id(model)}'
 
-                field_values[field.name] = field_value
+                field_values[field.name] = field.to_python(field_value) # to save default lazy values correctly, should not be problem in any case
 
         m2m_classes = (ManyToManyField, GM2MField) if 'gm2m' in getattr(settings, 'INSTALLED_APPS') else ManyToManyField
 
