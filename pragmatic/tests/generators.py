@@ -40,7 +40,14 @@ from django.http import QueryDict
 from django.test import RequestFactory
 from django.urls import reverse
 from django.utils.timezone import now
-from django.utils.translation import ugettext_lazy
+
+try:
+    # older Django
+    from django.utils.translation import ugettext_lazy as _
+except ImportError:
+    # Django >= 3
+    from django.utils.translation import gettext_lazy as _
+
 from django.views.generic import CreateView, UpdateView, DeleteView
 from internationalflavor import iban as if_iban
 from internationalflavor import vat_number as if_vat
@@ -1391,7 +1398,7 @@ class GenericTestMixin(object):
                     response = self.client.post(path=path, data=form_kwargs['data'], follow=True)
                     self.assertEqual(response.status_code, 200)
                 except ValidationError as e:
-                    if e.message == ugettext_lazy('ManagementForm data is missing or has been tampered with'):
+                    if e.message == _('ManagementForm data is missing or has been tampered with'):
                         post_data = QueryDict('', mutable=True)
 
                         try:

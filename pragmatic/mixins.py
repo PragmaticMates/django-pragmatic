@@ -19,7 +19,20 @@ from django.utils import timezone
 from django.utils.functional import cached_property
 from django.utils.inspect import method_has_no_args
 from django.utils.text import slugify
-from django.utils.translation import ugettext_lazy as _, ugettext
+
+try:
+    # older Django
+    from django.utils.translation import ugettext_lazy as _
+except ImportError:
+    # Django >= 3
+    from django.utils.translation import gettext_lazy as _
+
+try:
+    # older Django
+    from django.utils.translation import ugettext
+except ImportError:
+    # Django >= 3
+    from django.utils.translation import gettext as ugettext
 
 from pragmatic.models import DeletedObject
 
