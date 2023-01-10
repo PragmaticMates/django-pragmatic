@@ -8,7 +8,7 @@ from django.utils.text import capfirst
 from django.core import exceptions
 from django.core.exceptions import ValidationError
 from django.core.validators import EMPTY_VALUES
-from django.utils.encoding import smart_text
+from django.utils.encoding import smart_str
 
 try:
     # older Django
@@ -47,9 +47,9 @@ class TruncatedModelChoiceField(forms.ModelChoiceField):
 
     def label_from_instance(self, obj):
         if self.truncate_chars:
-            return smart_text(obj)[:self.truncate_chars] +\
-                   (smart_text(obj)[self.truncate_chars:] and self.truncate_suffix)
-        return smart_text(obj)
+            return smart_str(obj)[:self.truncate_chars] +\
+                   (smart_str(obj)[self.truncate_chars:] and self.truncate_suffix)
+        return smart_str(obj)
 
 
 class RangeField(forms.Field):
@@ -65,7 +65,7 @@ class RangeField(forms.Field):
         if value in EMPTY_VALUES:
             return None
         value = value.strip()
-        #value = smart_text(value)
+        #value = smart_str(value)
 
         #if self.localize:
         #    value = formats.sanitize_separators(value)
