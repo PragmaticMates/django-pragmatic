@@ -57,6 +57,7 @@ class GenericBaseMixin(object):
     objs = OrderedDict()
     TEST_PASSWORD = 'testpassword'
     IGNORE_MODEL_FIELDS = {}    # values for these model fields will not be generated, use for fields with automatically assigned values, for example {MPTTModel: ['lft', 'rght', 'tree_id', 'level']}
+    PRINT_SORTED_MODEL_DEPENDENCY = False
 
     # params for GenericTestMixin.test_urls
     RUN_ONLY_THESE_URL_NAMES = []  # if not empty will run tests only for provided urls, for debug purposes to save time
@@ -666,12 +667,20 @@ class GenericBaseMixin(object):
 
             return 0
 
-        sorted_models = sorted(cls.get_models_dependency(required_only).items(), key=lambda x: x[0]._meta.label,
-                               reverse=reverse)
-        sorted_models = OrderedDict(
-            sorted(sorted_models, key=functools.cmp_to_key(compare_models_dependency), reverse=reverse))
+        # sort alphabetically for consistent initial order
+        sorted_models = OrderedDict(sorted(cls.get_models_dependency(required_only).items(), key=lambda x: x[0]._meta.label, reverse=reverse))
 
-        # pprint(sorted_models)
+        # move manual dependencies to the beggining to force correct order (sort by dependencies is too ambiguous)
+        for model, dependcies in cls.manual_model_dependency().items():
+            for dependency in dependcies:
+                sorted_models.move_to_end(dependency, last=reverse)
+
+        # sort by dependencies
+        sorted_models = OrderedDict(sorted(sorted_models.items(), key=functools.cmp_to_key(compare_models_dependency), reverse=reverse))
+
+        if cls.PRINT_SORTED_MODEL_DEPENDENCY:
+            pprint(sorted_models)
+
         return sorted_models
 
     @classmethod
