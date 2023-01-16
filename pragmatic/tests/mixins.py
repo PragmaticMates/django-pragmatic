@@ -201,6 +201,16 @@ class UrlTestMixin(object):
                 if 'expected_url' in params:
                     self.assertRedirects(response, expected_url=params['expected_url'])
 
+                formset_keys = [key for key in response.context.keys() if 'formset' in key and response.context[key]]
+
+                for formset_key in formset_keys:
+                    formset = response.context[formset_key]
+                    for extra_form in formset.forms:
+                        self.assertTrue(
+                            extra_form.is_valid(),
+                            (path_name, 'form errors:', extra_form.errors)
+                        )
+
                 # deleting last created object, intended to order unique fields conflict
                 if delete_last is not None and delete_last.objects.all().count() > 1 and hasattr(delete_last, 'created'):
                     delete_last.objects.order_by('created').last().delete()
