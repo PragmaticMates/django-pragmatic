@@ -57,6 +57,7 @@ class GenericBaseMixin(object):
     objs = OrderedDict()
     TEST_PASSWORD = 'testpassword'
     IGNORE_MODEL_FIELDS = {}    # values for these model fields will not be generated, use for fields with automatically assigned values, for example {MPTTModel: ['lft', 'rght', 'tree_id', 'level']}
+    PRINT_SORTED_MODEL_DEPENDENCY = False
 
     # params for GenericTestMixin.test_urls
     RUN_ONLY_THESE_URL_NAMES = []  # if not empty will run tests only for provided urls, for debug purposes to save time
@@ -666,12 +667,20 @@ class GenericBaseMixin(object):
 
             return 0
 
-        sorted_models = sorted(cls.get_models_dependency(required_only).items(), key=lambda x: x[0]._meta.label,
-                               reverse=reverse)
-        sorted_models = OrderedDict(
-            sorted(sorted_models, key=functools.cmp_to_key(compare_models_dependency), reverse=reverse))
+        # sort alphabetically for consistent initial order
+        sorted_models = OrderedDict(sorted(cls.get_models_dependency(required_only).items(), key=lambda x: x[0]._meta.label, reverse=reverse))
 
-        # pprint(sorted_models)
+        # move manual dependencies to the beggining to force correct order (sort by dependencies is too ambiguous)
+        for model, dependcies in cls.manual_model_dependency().items():
+            for dependency in dependcies:
+                sorted_models.move_to_end(dependency, last=reverse)
+
+        # sort by dependencies
+        sorted_models = OrderedDict(sorted(sorted_models.items(), key=functools.cmp_to_key(compare_models_dependency), reverse=reverse))
+
+        if cls.PRINT_SORTED_MODEL_DEPENDENCY:
+            pprint(sorted_models)
+
         return sorted_models
 
     @classmethod
@@ -735,7 +744,7 @@ class GenericBaseMixin(object):
                 if isinstance(field, CharField) and (field.name in unique_fields or field.unique) and not field.choices:
                     field_value = f'{field_value}_{cls.next_id(model)}'
 
-                field_values[field.name] = field_value
+                field_values[field.name] = field.to_python(field_value) # to save default lazy values correctly, should not be problem in any case
 
         m2m_classes = (ManyToManyField, GM2MField) if 'gm2m' in getattr(settings, 'INSTALLED_APPS') else ManyToManyField
 
@@ -1474,6 +1483,16 @@ class GenericTestMixin(object):
 
                         # form = form_class(**form_kwargs)
                         form = response.context_data.get('form', None)
+                        errors = [form.errors]
+                        is_valid = [form.is_valid()]
+                        formset_keys = [key for key in response.context.keys() if 'formset' in key and response.context[key]]
+
+                        for formset_key in formset_keys:
+                            formset = response.context[formset_key]
+                            is_valid.append(formset.is_valid())
+
+                            for extra_form in formset.forms:
+                                errors.append(extra_form.errors)
 
                         fails.append(OrderedDict({
                             'location': 'POST COUNT',
@@ -1484,8 +1503,8 @@ class GenericTestMixin(object):
                             'view model': view_class.model,
                             'form class': form_class,
                             # 'form': form,
-                            'form valid': form.is_valid() if form else None,
-                            'form errors': form.errors if form else None,
+                            'form valid': is_valid,
+                            'form errors': errors,
                             'data': form_kwargs['data'],
                             'traceback': traceback.format_exc()
                         }))
