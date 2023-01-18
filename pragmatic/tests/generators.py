@@ -1489,7 +1489,7 @@ class GenericTestMixin(object):
 
                         for formset_key in formset_keys:
                             formset = response.context[formset_key]
-                            is_valid.append(formset.is_valid())
+                            is_valid.append((formset_key, formset.is_valid()))
 
                             for extra_form in formset.forms:
                                 errors.append(extra_form.errors)
