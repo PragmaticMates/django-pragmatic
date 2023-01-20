@@ -1483,8 +1483,8 @@ class GenericTestMixin(object):
 
                         # form = form_class(**form_kwargs)
                         form = response.context_data.get('form', None)
-                        errors = [form.errors]
-                        is_valid = [form.is_valid()]
+                        errors = [form.errors if form else None]
+                        is_valid = [form.is_valid() if form else None]
                         formset_keys = [key for key in response.context.keys() if 'formset' in key and response.context[key]]
 
                         for formset_key in formset_keys:
