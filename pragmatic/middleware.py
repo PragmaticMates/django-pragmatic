@@ -34,6 +34,6 @@ class MaintenanceModeMiddleware(MiddlewareMixin):
         if 'django.core.context_processors.request' in context_processors or \
             'django.template.context_processors.request' in context_processors:
             template = loader.get_template(self.template_name)
-            return HttpResponse(template.render({}, request))
+            return HttpResponse(template.render({}, request), status=503)
         else:
-            return SimpleTemplateResponse(self.template_name).render()
+            return SimpleTemplateResponse(self.template_name, status=503).render()
