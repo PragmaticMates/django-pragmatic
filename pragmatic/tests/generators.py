@@ -947,11 +947,13 @@ class GenericBaseMixin(object):
 
             if isinstance(validator, MinValueValidator):
                 # return validator.limit_value + 1
-                return random.randint(validator.limit_value, validator.limit_value + 9)
+                limit_value = int(validator.limit_value)
+                return random.randint(limit_value, limit_value + 9)
 
             if isinstance(validator, MaxValueValidator):
                 # return validator.limit_value - 1
-                return random.randint(1, validator.limit_value)
+                limit_value = int(validator.limit_value)
+                return random.randint(1, limit_value)
 
         return random.randint(1, 9)
 
