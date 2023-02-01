@@ -71,7 +71,7 @@ class GenericBaseMixin(object):
 
     # params for GenericTestMixin.test_urls
     RUN_ONLY_THESE_URL_NAMES = []  # if not empty will run tests only for provided urls, for debug purposes to save time
-    RUN_URL_NAMES_CONTAINING = []  # if not empty will run tests only for urls containing at least one of provided patterns
+    RUN_ONLY_URL_NAMES_CONTAINING = []  # if not empty will run tests only for urls containing at least one of provided patterns
     IGNORE_URL_NAMES_CONTAINING = []    # contained urls will not be tested
     POST_ONLY_URLS = [] # run only post request tests for these urls
     GET_ONLY_URLS = []  # run only get request tests for these urls
@@ -964,6 +964,7 @@ class GenericBaseMixin(object):
                 'params_1: {
                     'args': [],
                     'kwargs': {},
+                    'cookies: {}, # dict or cookie str
                     'data': {},
                     'form_kwargs': {},
                 },
@@ -1252,9 +1253,9 @@ class GenericTestMixin(object):
             # print('SKIP')
             return True
 
-        if self.RUN_URL_NAMES_CONTAINING and not url_name.endswith(
-                tuple(self.RUN_URL_NAMES_CONTAINING)) and not url_name.startswith(
-                tuple(self.RUN_URL_NAMES_CONTAINING)):
+        if self.RUN_ONLY_URL_NAMES_CONTAINING and not url_name.endswith(
+                tuple(self.RUN_ONLY_URL_NAMES_CONTAINING)) and not url_name.startswith(
+                tuple(self.RUN_ONLY_URL_NAMES_CONTAINING)):
             # print('SKIP')
             return True
 
@@ -1265,7 +1266,7 @@ class GenericTestMixin(object):
 
         return False
 
-    def get_url_tes(self, path_name, path, parsed_args, url_pattern, view_class, params_map):
+    def get_url_test(self, path_name, path, parsed_args, url_pattern, view_class, params_map):
         fails = []
         data = params_map.get('data', {})
 
@@ -1575,9 +1576,16 @@ class GenericTestMixin(object):
                         failed.extend(fails)
                         continue
 
+                    # set cookies
+                    cookies = params_map.get('cookies', None)
+
+                    if cookies is not None:
+                        initial_cookies = self.client.cookies
+                        self.client.cookies.load(cookies)
+
                     # GET url
                     if not path_name in self.POST_ONLY_URLS:
-                        get_response, fails = self.get_url_tes(path_name, path, parsed_args, url_pattern, view_class, params_map)
+                        get_response, fails = self.get_url_test(path_name, path, parsed_args, url_pattern, view_class, params_map)
 
                         if fails:
                             failed.extend(fails)
@@ -1590,6 +1598,10 @@ class GenericTestMixin(object):
                         if fails:
                             failed.extend(fails)
                             continue
+
+                    # reset cookies
+                    if cookies is not None:
+                        self.client.cookies = initial_cookies
 
         if failed:
             # append failed count at the end of error list
