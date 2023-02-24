@@ -174,7 +174,7 @@ class UrlTestMixin(object):
 
                 if not isinstance(form, BaseFormSet):
                     # skip formset data and split field subfields # TODO: improve
-                    data_without_formset = {key: value for key, value in data.items() if not (key.startswith('form-') or key.endswith(('_0', '_1')))}
+                    data_without_formset = {key: value for key, value in data.items() if not ('-' in key or key.endswith(('_0', '_1')))}
 
                     # check if all fields are passed, if not pass problem fields to fail message
                     self.assertEqual(
