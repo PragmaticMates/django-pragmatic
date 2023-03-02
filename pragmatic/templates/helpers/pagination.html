@@ -32,7 +32,7 @@
             {% endif %}
 
             {% for linkpage in page_numbers %}
-                {% ifequal linkpage page %}
+                {% if linkpage == page %}
                     <li class="active disabled">
                         <a>
                             {{ page }}
@@ -45,7 +45,7 @@
                             <li><a href="{{ request.get_full_path|replace_query_param:param }}">{{ page_num }}<span></span></a></li>
                         {% endwith %}
                     {% endwith %}
-                {% endifequal %}
+                {% endif %}
             {% endfor %}
 
             {% if show_last %}
