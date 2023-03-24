@@ -5,6 +5,7 @@ from time import time
 import django_rq
 from django.conf import settings
 from django.contrib.auth.models import Group, Permission, User
+from django.core.exceptions import PermissionDenied
 from django.forms import BaseFormSet
 from django.shortcuts import get_object_or_404
 from django.urls import reverse, reverse_lazy
@@ -72,7 +73,14 @@ class UrlTestMixin(object):
                     print(path_name, params, path)
 
                 checked_paths.add(path_name.split(':')[-1])
-                response = self.client.get(path=path['route'], data=params.get('data', None), follow=params.get('follow', False))
+
+                try:
+                    response = self.client.get(path=path['route'], data=params.get('data', None), follow=params.get('follow', False))
+                except PermissionDenied:
+                    if params.get('expected_status_code', 200) == 403:
+                        continue
+                    else:
+                        raise
 
                 message = path_name
                 if hasattr(response, 'redirect_chain') and response.redirect_chain:
@@ -190,7 +198,14 @@ class UrlTestMixin(object):
                 )
 
                 follow = params.get('follow', False if 'expected_status_code' in params else True)
-                response = self.client.post(path=path['route'], data=form.data, follow=follow)
+
+                try:
+                    response = self.client.post(path=path['route'], data=form.data, follow=follow)
+                except PermissionDenied:
+                    if params.get('expected_status_code', 200) == 403:
+                        continue
+                    else:
+                        raise
 
                 message = path_name
                 if hasattr(response, 'redirect_chain') and response.redirect_chain:
