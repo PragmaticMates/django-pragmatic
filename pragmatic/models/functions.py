@@ -1,11 +1,17 @@
-from django.db.models import Aggregate, FloatField
+from django.db.models import Aggregate, FloatField, DecimalField
 from django.db.models.expressions import Func, Expression
+from django.utils.functional import cached_property
+
 from pragmatic.models.expressions import F, Value
 
 
 class Round(Func):
     function = 'ROUND'
     arity = 2
+
+    @cached_property
+    def output_field(self):
+        return DecimalField()
 
 
 # https://github.com/primal100/django_postgres_extensions

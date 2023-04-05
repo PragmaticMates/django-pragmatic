@@ -3,7 +3,7 @@ from itertools import chain
 from django import forms
 from django.forms import TextInput
 from django.forms.widgets import CheckboxSelectMultiple, CheckboxInput
-from django.utils.encoding import force_text
+from django.utils.encoding import force_str
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 
@@ -62,7 +62,7 @@ class GroupedCheckboxSelectMultiple(CheckboxSelectMultiple):
         if 'groups' not in final_attrs:
             output = []
             # Normalize to strings
-            str_values = set([force_text(v) for v in value])
+            str_values = set([force_str(v) for v in value])
             for i, (option_value, option_label) in enumerate(chain(self.choices, choices)):
                 # If an ID attribute was given, add a numeric index as a suffix,
                 # so that the checkboxes don't all have the same ID attribute.
@@ -73,9 +73,9 @@ class GroupedCheckboxSelectMultiple(CheckboxSelectMultiple):
                     label_for = ''
 
                 cb = CheckboxInput(final_attrs, check_test=lambda value: value in str_values)
-                option_value = force_text(option_value)
+                option_value = force_str(option_value)
                 rendered_cb = cb.render(name, option_value)
-                option_label = force_text(option_label)
+                option_label = force_str(option_label)
                 output.append('<div class="checkbox"><label%s>%s %s</label></div>' % (label_for, rendered_cb, option_label))
             return mark_safe('\n'.join(output))
 
@@ -86,7 +86,7 @@ class GroupedCheckboxSelectMultiple(CheckboxSelectMultiple):
             del final_attrs['groups']
 
         for group_index, group in enumerate(groups):
-            str_values = set([force_text(v) for v in value])
+            str_values = set([force_str(v) for v in value])
             group_id = 'group_%i' % group_index
 
             result = ['<ul class="list-group">']
@@ -130,9 +130,9 @@ class GroupedCheckboxSelectMultiple(CheckboxSelectMultiple):
                 if cb.check_test(str(option_value)):
                     open_group = True
 
-                option_value = force_text(option_value)
+                option_value = force_str(option_value)
                 rendered_cb = cb.render(name, option_value)
-                option_label = force_text(option_label)
+                option_label = force_str(option_label)
                 result.append('<li class="list-group-item"><div class="checkbox"><label%s>%s %s</label></div></li>' % (label_for, rendered_cb, option_label))
             result.append('</ul>')
 

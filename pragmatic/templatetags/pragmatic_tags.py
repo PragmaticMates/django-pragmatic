@@ -14,7 +14,22 @@ from django.urls import translate_url as django_translate_url
 from django.utils.html import conditional_escape
 from django.utils.safestring import mark_safe
 from django.utils.timezone import now
-from django.utils.translation import ugettext, ugettext_lazy as _, override as override_language
+
+try:
+    # older Django
+    from django.utils.translation import ugettext_lazy as _
+except ImportError:
+    # Django >= 3
+    from django.utils.translation import gettext_lazy as _
+
+try:
+    # older Django
+    from django.utils.translation import ugettext
+except ImportError:
+    # Django >= 3
+    from django.utils.translation import gettext as ugettext
+
+from django.utils.translation import override as override_language
 from python_pragmatic.strings import barcode as pragmatic_barcode
 
 register = template.Library()

@@ -2,8 +2,8 @@ import sqlparse
 from debug_toolbar.panels.sql import SQLPanel as ToolbarSQLPanel
 from debug_toolbar.panels.sql import views
 from debug_toolbar.panels.sql.forms import SQLSelectForm
-from django.conf.urls import url
 from django.http import HttpResponseBadRequest
+from django.urls import re_path
 
 try:
     # Django>=3.0
@@ -20,9 +20,9 @@ class SQLPanel(ToolbarSQLPanel):
     @classmethod
     def get_urls(cls):
         return [
-            url(r'^sql_select/$', views.sql_select, name='sql_select'),
-            url(r'^sql_explain/$', sql_explain, name='sql_explain'),
-            url(r'^sql_profile/$', views.sql_profile, name='sql_profile'),
+            re_path(r'^sql_select/$', views.sql_select, name='sql_select'),
+            re_path(r'^sql_explain/$', sql_explain, name='sql_explain'),
+            re_path(r'^sql_profile/$', views.sql_profile, name='sql_profile'),
         ]
 
 
