@@ -1,16 +1,19 @@
 import datetime
 import inspect
 import io
+from itertools import groupby
 
 import requests
 from django import forms
 from django.conf import settings
 from django.contrib import messages
+from django.contrib.admin.utils import NestedObjects
 from django.contrib.auth.mixins import PermissionRequiredMixin as DjangoPermissionRequiredMixin, AccessMixin
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import PermissionDenied
 from django.core.validators import EMPTY_VALUES
 from django.core.paginator import EmptyPage, Paginator
+from django.db import router
 from django.db.models import F, QuerySet
 from django.db.models.deletion import ProtectedError
 from django.http.response import HttpResponseRedirect, HttpResponse
@@ -18,6 +21,7 @@ from django.shortcuts import redirect
 from django.utils import timezone
 from django.utils.functional import cached_property
 from django.utils.inspect import method_has_no_args
+from django.utils.safestring import mark_safe
 from django.utils.text import slugify
 
 try:
@@ -165,6 +169,47 @@ class DeleteObjectMixin(object):
         context_data['title'] = self.title
         context_data['back_url'] = self.get_back_url()
         return context_data
+
+
+class CheckProtectedDeleteObjectMixin(DeleteObjectMixin):
+    def dispatch(self, request, *args, **kwargs):
+        using = router.db_for_write(self.get_object()._meta.model)
+        collector = NestedObjects(using=using)
+        collector.collect([self.get_object()])
+        protected = collector.protected
+
+        if protected:
+            objects = []
+            grouped_dict = {}
+
+            for object_type, grouper in groupby(protected, key=type):
+                if grouped_dict.get(object_type):
+                    existing_list = grouped_dict.get(object_type)
+                    for obj in list(grouper):
+                        existing_list.append(obj)
+
+                    grouped_dict[object_type] = existing_list
+                else:
+                    grouped_dict[object_type] = list(grouper)
+
+            for obj_type, obj_list in grouped_dict.items():
+                obj_name = _(obj_type._meta.verbose_name_plural)
+                objects.append(mark_safe(
+                    '%(text)s' % {'text': str(obj_name) + ' (' + str(len(obj_list)) + ')'}))
+
+                # try:
+                #     url = reverse_lazy(f'{obj_type._meta.app_label}:{obj_type._meta.model_name}_list')
+                #     objects.append(mark_safe(
+                #         '<a href="%(url)s" target="_blank">%(text)s</a>' % {'url': url + '?person=' + str(self.get_object().pk),
+                #                                                             'text': str(obj_name) + ' (' + str(len(obj_list)) + ')'}))
+                # except NoReverseMatch:
+                #     objects.append(mark_safe(
+                #         '%(text)s' % {'text': str(obj_name) + ' (' + str(len(obj_list)) + ')'}))
+
+            messages.error(self.request, _('Instance cannot be deleted because of related objects: {}').format(', '.join(objects)))
+            return redirect(self.get_object().get_absolute_url())
+
+        return super().dispatch(request, *args, **kwargs)
 
 
 class PickadayFormMixin(object):
