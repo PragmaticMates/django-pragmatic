@@ -1,10 +1,12 @@
 from collections import defaultdict
 from functools import wraps
+from pprint import pprint
+
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import signals as django_signals
 from django.db.models.signals import pre_init, post_init, post_save, pre_save, pre_delete, post_delete, post_migrate, \
-    pre_migrate
+    pre_migrate, m2m_changed
 from django.utils.timezone import now
 
 
@@ -272,14 +274,25 @@ class temporary_disconnect_signal:
 
 
 class disable_signals:
-    def __init__(self, disabled_signals=None):
-        self.stashed_signals = defaultdict(list)
-        self.disabled_signals = disabled_signals or [
+    signals = [
             pre_init, post_init,
             pre_save, post_save,
             pre_delete, post_delete,
             pre_migrate, post_migrate,
+            m2m_changed,
         ]
+
+    def __init__(self, disabled_signals=None, enabled_signals=None, disabled_receviers=None, enabled_receivers=None):
+        self.enabled_receivers = enabled_receivers
+        self.disabled_receivers = disabled_receviers
+        self.stashed_signals = defaultdict(list)
+
+        if disabled_signals:
+            self.disabled_signals = disable_signals
+        elif enabled_signals:
+            self.disabled_signals = [signal for signal in self.signals if signal not in enabled_signals]
+        else:
+            self.disabled_signals = self.signals
 
     def __enter__(self):
         for signal in self.disabled_signals:
@@ -291,7 +304,13 @@ class disable_signals:
 
     def disconnect(self, signal):
         self.stashed_signals[signal] = signal.receivers
-        signal.receivers = []
+
+        if self.disabled_receivers:
+            signal.receivers = [receiver for receiver in self.stashed_signals[signal] if receiver[-1]().__name__ not in self.disabled_receivers]
+        elif self.enabled_receivers:
+            signal.receivers = [receiver for receiver in self.stashed_signals[signal] if receiver[-1]().__name__ in self.enabled_receivers]
+        else:
+            signal.receivers = []
 
     def reconnect(self, signal):
         signal.receivers = self.stashed_signals.get(signal, [])
