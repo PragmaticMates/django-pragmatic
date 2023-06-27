@@ -18,9 +18,9 @@ function init_slider(slider_element) {
     var slider = slider_element.slider({
         formatter: function (val) {
             if (Array.isArray(val)) {
-                return ((val[0] <= min) ? "-" : val[0]) + " : " + val[1];
+                return ((val[0] <= min) ? min : val[0]) + " : " + val[1];
             } else {
-                return (val <= min) ? "-" : val;
+                return (val <= min) ? min : val;
             }
         }
     });
@@ -95,7 +95,7 @@ function init_slider(slider_element) {
 
         if (values.length > 1) {
             if (values[0] <= min) {
-                values[0] = '-'
+                values[0] = min
             }
 
             if (useInput === true){
@@ -107,7 +107,7 @@ function init_slider(slider_element) {
             }
         } else {
             if (values <= min) {
-                values = '-'
+                values = min
             }
 
             if (useInput === true) {
