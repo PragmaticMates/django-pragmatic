@@ -169,7 +169,7 @@ class SignalsHelper(object):
             return None
 
     @staticmethod
-    def attribute_changed(instance, diff_fields, diff_contains={}):
+    def attribute_changed(instance, diff_fields, diff_contains={}, obj_exists=False):
         '''
         diff_fields: list of field names
         diff_contains: either {field_name: [vaue_1, value_2, ...]} or {field_name: {'from': [old_value_1, ...], 'to': [new_value_1, ...]}}
@@ -178,6 +178,9 @@ class SignalsHelper(object):
 
         if not obj:
             # new object
+            if obj_exists:
+                return False
+
             return True
 
         # object existed before, check difference
