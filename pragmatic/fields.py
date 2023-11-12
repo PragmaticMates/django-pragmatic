@@ -9,13 +9,7 @@ from django.core import exceptions
 from django.core.exceptions import ValidationError
 from django.core.validators import EMPTY_VALUES
 from django.utils.encoding import smart_str
-
-try:
-    # older Django
-    from django.utils.translation import ugettext_lazy as _
-except ImportError:
-    # Django >= 3
-    from django.utils.translation import gettext_lazy as _
+from django.utils.translation import gettext_lazy as _
 
 from django_filters.constants import EMPTY_VALUES
 from django_filters.fields import BaseRangeField, BaseCSVField

@@ -23,20 +23,7 @@ from django.utils.functional import cached_property
 from django.utils.inspect import method_has_no_args
 from django.utils.safestring import mark_safe
 from django.utils.text import slugify
-
-try:
-    # older Django
-    from django.utils.translation import ugettext_lazy as _
-except ImportError:
-    # Django >= 3
-    from django.utils.translation import gettext_lazy as _
-
-try:
-    # older Django
-    from django.utils.translation import ugettext
-except ImportError:
-    # Django >= 3
-    from django.utils.translation import gettext as ugettext
+from django.utils.translation import gettext_lazy as _, gettext
 
 from pragmatic.models import DeletedObject
 
@@ -85,7 +72,7 @@ class StaffRequiredMixin(AccessMixin):
     CBV mixin which verifies that the current user is staff
     """
     raise_exception = False
-    permission_denied_message = ugettext('You are not authorized for this operation')
+    permission_denied_message = gettext('You are not authorized for this operation')
 
     def dispatch(self, request, *args, **kwargs):
         if not request.user.is_staff and not request.user.is_superuser:

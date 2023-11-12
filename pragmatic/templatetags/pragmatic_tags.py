@@ -15,21 +15,8 @@ from django.utils.html import conditional_escape
 from django.utils.safestring import mark_safe
 from django.utils.timezone import now
 
-try:
-    # older Django
-    from django.utils.translation import ugettext_lazy as _
-except ImportError:
-    # Django >= 3
-    from django.utils.translation import gettext_lazy as _
+from django.utils.translation import gettext_lazy as _, gettext, override as override_language
 
-try:
-    # older Django
-    from django.utils.translation import ugettext
-except ImportError:
-    # Django >= 3
-    from django.utils.translation import gettext as ugettext
-
-from django.utils.translation import override as override_language
 from python_pragmatic.strings import barcode as pragmatic_barcode
 
 register = template.Library()
@@ -190,10 +177,10 @@ def filtered_values(filter, request_data):
 
                 if ending in ['_after', '_min']:
                     slice_value_name = 'start'
-                    label_suffix = ugettext('after') if ending == '_after' else ugettext('from')
+                    label_suffix = gettext('after') if ending == '_after' else gettext('from')
                 else:
                     slice_value_name = 'stop'
-                    label_suffix = ugettext('before') if ending == '_before' else ugettext('to')
+                    label_suffix = gettext('before') if ending == '_before' else gettext('to')
 
         filter_field = filter.filters.get(filter_name, None)
 
@@ -263,9 +250,9 @@ def filtered_values(filter, request_data):
                             value = ' - '.join([str(value.start), str(value.stop)])
                         else:
                             if value.start:
-                                value = ugettext('at least') + ' ' + str(value.start)
+                                value = gettext('at least') + ' ' + str(value.start)
                             elif value.stop:
-                                value = ugettext('up to') + ' ' + str(value.stop)
+                                value = gettext('up to') + ' ' + str(value.stop)
 
                 values[param] = {
                     'label': (filter_field.label + ' ' + label_suffix).strip(),
@@ -305,10 +292,10 @@ def num_applied_filters(filter, request_data):
 def filtered_objects_counts(filtered, all):
     try:
         if filtered == all or all == 0:
-            return mark_safe('%s: <strong>%d</strong>' % (ugettext('total'), all))
+            return mark_safe('%s: <strong>%d</strong>' % (gettext('total'), all))
         else:
             percent = 100 * float(filtered) / all
-            return mark_safe('<strong>%d (%.2f%%)</strong> %s %d' % (filtered, percent, ugettext('filtered, from a total of'), all))
+            return mark_safe('<strong>%d (%.2f%%)</strong> %s %d' % (filtered, percent, gettext('filtered, from a total of'), all))
     except (ValueError, TypeError):
         return ''
 
@@ -433,7 +420,7 @@ def subtract(value, arg):
 
 @register.filter()
 def translate(text):
-    return ugettext(text)
+    return gettext(text)
 
 
 @register.filter
