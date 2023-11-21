@@ -11,7 +11,6 @@ from django.core.validators import EMPTY_VALUES
 from django.utils.encoding import smart_str
 from django.utils.translation import gettext_lazy as _
 
-from django_filters.constants import EMPTY_VALUES
 from django_filters.fields import BaseRangeField, BaseCSVField
 from pragmatic.widgets import SliderWidget
 
@@ -178,7 +177,7 @@ class MultiSelectField(models.Field):
         return value
 
     def get_db_prep_value(self, value, connection=None, prepared=False):
-        if isinstance(value, basestring):
+        if isinstance(value, str):
             return value
         elif isinstance(value, list):
             return ",".join(value)
