@@ -12,6 +12,7 @@ Tested on Django 1.5 up to Django 1.10.2
 Requirements
 ------------
 - Django
+- googlemaps
 
 Some utilities require additional libraries as:
 
@@ -193,3 +194,5 @@ Thirdparty
 ''''''''''
 ``class BarcodeImageWriter(ImageWriter)``
     Fixed version of barcode.writer.ImageWriter.
+``class GetBestRouteHelper``
+    Helper for getting the route without Switzerland for a provided origin and destination.
