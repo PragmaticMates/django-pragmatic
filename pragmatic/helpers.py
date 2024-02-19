@@ -52,11 +52,10 @@ class GetBestRouteHelper:
             best_route = min(
                 self._routes, key=lambda route: route["legs"][0]["duration"]["value"]
             )
-            route_info = best_route["legs"][0]
+            # route_info = best_route["legs"][0] # summary about route
 
             result = {
-                "distance": route_info["distance"]["text"],
-                "duration": route_info["duration"]["text"],
+                "via": self._waypoints,
                 "polyline": best_route["overview_polyline"]["points"],
             }
 
