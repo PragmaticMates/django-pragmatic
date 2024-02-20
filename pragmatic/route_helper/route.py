@@ -39,7 +39,7 @@ class GetBestRouteHelper:
             Returns:
                 dict
                     Keys, values:
-                        distance: str, duration: str, polyline: str
+                        distance: str, polyline: str, via: list[str]
         """
         self._get_routes(origin, destination, waypoints)
         self._routes = self._check_if_country_exists()
@@ -48,10 +48,11 @@ class GetBestRouteHelper:
             best_route = min(
                 self._routes, key=lambda route: route["legs"][0]["duration"]["value"]
             )
-            # route_info = best_route["legs"][0] # summary about route
+            route_info = best_route["legs"][0]
 
             result = {
                 "via": self._waypoints,
+                "distance": route_info["distance"]["value"]/1000,
                 "polyline": best_route["overview_polyline"]["points"],
             }
 
