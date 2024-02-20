@@ -15,7 +15,10 @@ setup(
     url='https://github.com/PragmaticMates/django-pragmatic',
     packages=find_packages(),
     include_package_data=True,
-    install_requires=('django>=4.2', 'django-filter', 'python-pragmatic', 'googlemaps>=4.10.0'),
+    package_dir={'pragmatic': 'src'},
+    install_requires=(
+        'django>=4.2', 'django-filter', 'python-pragmatic',
+        'googlemaps>=4.10.0'),
     classifiers=[
         'Programming Language :: Python',
         'Programming Language :: Python :: 2.6',
