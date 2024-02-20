@@ -194,5 +194,9 @@ Thirdparty
 ''''''''''
 ``class BarcodeImageWriter(ImageWriter)``
     Fixed version of barcode.writer.ImageWriter.
+
+
+Helpers
+'''''''
 ``class GetBestRouteHelper``
     Helper for getting the route without Switzerland for a provided origin and destination.
