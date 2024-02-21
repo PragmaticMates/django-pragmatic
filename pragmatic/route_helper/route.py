@@ -57,7 +57,7 @@ class GetBestRouteHelper:
 
             result = {
                 "via": self._waypoints,
-                "distance": route_info["distance"]["value"]/1000,
+                "distance": route_info["distance"]["value"]//1000,
                 "polyline": best_route["overview_polyline"]["points"],
             }
 
