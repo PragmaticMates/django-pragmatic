@@ -1,4 +1,5 @@
 from googlemaps import Client
+from googlemaps.exceptions import ApiError
 
 
 class GetBestRouteHelper:
@@ -41,7 +42,11 @@ class GetBestRouteHelper:
                     Keys, values:
                         distance: str, polyline: str, via: list[str]
         """
-        self._get_routes(origin, destination, waypoints)
+        try:
+            self._get_routes(origin, destination, waypoints)
+        except ApiError as error:
+            return {"error": error}
+
         self._routes = self._check_if_country_exists()
 
         if self._routes:
