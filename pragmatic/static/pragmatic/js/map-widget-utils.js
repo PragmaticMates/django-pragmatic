@@ -168,7 +168,7 @@
                 // if status is incorrect, clear search value
                 if (status != google.maps.places.PlacesServiceStatus.OK) {
                     $(widget.addressAutoCompleteInput).val('');
-                    widget.deleteMarker();
+                    widget.removeMarker();
                     widget.map.setCenter({lat: widget.mapCenterLocation[0], lng: widget.mapCenterLocation[1]});
                     widget.map.setZoom(widget.zoom);
                     console.log("Address was not found: " + address);
@@ -200,7 +200,7 @@
 
                         } else {
                             // geocoder couldn't find a GPS...
-                            widget.deleteMarker();
+                            widget.removeMarker();
                             console.warn('Cannot find ' + address_by_prediction + ' on google geo service.');
                         }
                     });
