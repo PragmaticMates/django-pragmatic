@@ -471,9 +471,20 @@ class PdfDetailMixin(object):
 
     @staticmethod
     def render_pdf(html_content, filename='output.pdf', inline=True):
+        htmltopdf_api_url = getattr(settings, 'HTMLTOPDF_API_URL', None)
+        printmyweb_url = getattr(settings, 'PRINTMYWEB_URL', None)
+        printmyweb_token = getattr(settings, 'PRINTMYWEB_TOKEN', None)
+
+        print_api_url = htmltopdf_api_url or printmyweb_url
+
+        kwargs = {}
+        if printmyweb_token:
+            kwargs['headers'] = {
+                'api-key': printmyweb_token
+            }
+
         content_type = 'inline' if inline else 'attachment'
-        api_url = settings.HTMLTOPDF_API_URL
-        pdf_response = requests.post(api_url, data=html_content)
+        pdf_response = requests.post(print_api_url, data=html_content, **kwargs)
         buffer = io.BytesIO(pdf_response.content)
 
         from PyPDF2 import PdfFileMerger
