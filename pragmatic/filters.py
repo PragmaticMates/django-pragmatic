@@ -38,7 +38,7 @@ class OneFieldRangeFilter(django_filters.Filter):
 
     def filter(self, qs, value):
         if value:
-            return qs.filter(**{'%s__range' % self.name: (value[0], value[1])})
+            return qs.filter(**{'%s__range' % self.field_name: (value[0], value[1])})
         return qs
 
 
