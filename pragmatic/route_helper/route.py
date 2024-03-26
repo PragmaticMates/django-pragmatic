@@ -14,20 +14,19 @@ class GetBestRouteHelper:
     _BEAUNE = ["via:Beaune, France"]
 
     def __init__(
-        self,
-        api_key: str
+            self,
+            api_key: str
     ):
         self._alternatives: bool = True
-        self._waypoints: list[str] | None = None
         self._avoidable_country: str = "Switzerland"
         self._routes: list[dict] | dict | None = None
         self._client: Client = Client(key=api_key)
 
     def find_best_route(
-        self,
-        origin: str | dict,
-        destination: str | dict,
-        waypoints: list[str] | None = None,
+            self,
+            origin: str | dict,
+            destination: str | dict,
+            waypoints: list[str] | str | None = None,
     ) -> dict:
         """
             Implemented algorithm trying to find the route avoiding Switzerland.
@@ -47,7 +46,8 @@ class GetBestRouteHelper:
         except ApiError as error:
             return {"error": error}
 
-        self._routes = self._check_if_country_exists()
+        if not self._is_switzerland_in_points([origin, destination]):
+            self._check_if_country_exists()
 
         if self._routes:
             best_route = min(
@@ -56,8 +56,8 @@ class GetBestRouteHelper:
             route_info = best_route["legs"][0]
 
             result = {
-                "via": self._waypoints,
-                "distance": route_info["distance"]["value"]//1000,
+                "via": waypoints,
+                "distance": route_info["distance"]["value"] // 1000,
                 "polyline": best_route["overview_polyline"]["points"],
             }
 
@@ -74,7 +74,7 @@ class GetBestRouteHelper:
             )
 
     def _get_routes(
-        self, origin: str | dict, destination: str | dict, waypoints: list[str] | None
+            self, origin: str | dict, destination: str | dict, waypoints: list[str] | None
     ) -> None:
         """Getting routes from Google Routes API"""
         self._routes = self._client.directions(
@@ -85,8 +85,18 @@ class GetBestRouteHelper:
             mode="driving",
         )
 
+    def _is_switzerland_in_points(self, points: list) -> bool:
+        """Check if Switzerland are in origin or destination"""
+        return any(
+            self._avoidable_country.lower() in location.lower()
+            for location in points
+        )
+
     def _check_if_country_exists(self) -> list[dict]:
-        """Check all the routes"""
+        """
+        Check all the routes.
+        If a route passes through Switzerland, remove it from routes
+        """
         routes_without_country = []
         for route in self._routes:
             country_exists = self._check_one_route(route)
@@ -94,7 +104,7 @@ class GetBestRouteHelper:
                 continue
             routes_without_country.append(route)
 
-        return routes_without_country
+        self._routes = routes_without_country
 
     def _check_one_route(self, route: dict):
         """Check if Switzerland in route"""
