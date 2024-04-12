@@ -1,3 +1,4 @@
+from django.contrib.gis.geos import point
 from googlemaps import Client
 from googlemaps.exceptions import ApiError
 
@@ -19,6 +20,7 @@ class GetBestRouteHelper:
     ):
         self._alternatives: bool = True
         self._avoidable_country: str = "Switzerland"
+        self._avoidable_country_code: str = "CH"
         self._routes: list[dict] | dict | None = None
         self._client: Client = Client(key=api_key)
 
@@ -89,6 +91,7 @@ class GetBestRouteHelper:
         """Check if Switzerland are in origin or destination"""
         return any(
             self._avoidable_country.lower() in location.lower()
+            or self._avoidable_country_code.lower() in location.lower()
             for location in points
         )
 
