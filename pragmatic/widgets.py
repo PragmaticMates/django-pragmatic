@@ -171,35 +171,6 @@ class SliderWidget(TextInput):
             self.attrs.update(attrs)
 
 
-class VersionedMediaJS:
-    def __init__(self, path, version):
-        self.path = forms.widgets.Media.absolute_path(None, path)
-        self.version = version
-
-    def __repr__(self):
-        return 'VersionedMediaJS(path=%r, version=%r)' % (self.path, self.version)
-
-    def __str__(self):
-        return self.render()
-
-    def render(self):
-        html = '<script type="text/javascript" src="{0}?{1}"></script>'
-        return format_html(html, mark_safe(self.path), self.version)
-
-    @staticmethod
-    def render_js(media_object):
-        html = []
-        for path in media_object._js:
-            if hasattr(path, 'version'):
-                html.append(path.render())
-            else:
-                html.append(format_html('<script type="text/javascript" src="{0}"></script>', media_object.absolute_path(path)))
-        return html
-
-
-forms.widgets.Media.render_js = VersionedMediaJS.render_js
-
-
 try:
     import mapwidgets
 
@@ -221,7 +192,6 @@ try:
 
         @property
         def media(self):
-            # js = VersionedMediaJS('pragmatic/js/city-autocomplete.js', settings.DEPLOYMENT_TIMESTAMP)  # TODO: fix version
             return forms.Media(js=('pragmatic/js/city-autocomplete.js',))
 except ImportError:
     pass
