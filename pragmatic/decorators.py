@@ -109,3 +109,70 @@ def require_lock(model, lock='ACCESS EXCLUSIVE'):
             return view_func(*args, **kwargs)
         return wrapper
     return require_lock_decorator
+
+
+class Cached(object):
+    def __init__(self, key, version=None, user=None, per_user=True, timeout=None, use_cache=True):
+        # TODO: backend
+        self.cache_key = key
+        self.version = version
+        self.user = user
+        self.per_user = per_user
+        self.timeout = timeout
+        self.use_cache = use_cache
+
+    def __enter__(self):
+        if not self.use_cache:
+            return None
+
+        # read cache
+        return cache.get(self.key, version=self.version)
+
+    def __exit__(self, type, value, traceback):
+        pass
+
+    @property
+    def key(self):
+        if self.user and self.user.is_authenticated and self.per_user:
+            return '{}:user={}'.format(self.cache_key, self.user.pk)
+
+        return self.cache_key
+
+    def save(self, data):
+        if self.use_cache:
+            # save to cache
+            cache.set(self.key, data, version=self.version, timeout=self.timeout)
+
+    @staticmethod
+    def cache_decorator(*args, **kwargs):
+        def _decorator(func):
+            """
+            Decorator to cache return value.
+            """
+
+            @property
+            @wraps(func)
+            def wrapper(self, *args, **kwargs):
+                key = kwargs.get('key', None)
+
+                if not key:
+                    if hasattr(self, 'cache_key') and self.cache_key:
+                        key = f'{self.cache_key}.{func.__name__}'
+                    else:
+                        key = func.__qualname__
+
+                timeout = kwargs.get('timeout', 3600)
+                version = kwargs.get('version', getattr(self, 'cache_version', None))
+                cached = cache.get(key, version=version)
+
+                if cached is not None:
+                    return cached
+
+                value = func(self, *args, **kwargs)
+                cache.set(key, value, version=version, timeout=timeout)
+
+                return value
+
+            return wrapper
+
+        return _decorator
