@@ -112,17 +112,15 @@ def require_lock(model, lock='ACCESS EXCLUSIVE'):
 
 
 class Cached(object):
-    def __init__(self, key, version=None, user=None, per_user=True, timeout=None, use_cache=True):
-        # TODO: backend
+    def __init__(self, key, version=None, user=None, per_user=True, timeout=None):
         self.cache_key = key
         self.version = version
         self.user = user
         self.per_user = per_user
         self.timeout = timeout
-        self.use_cache = use_cache
 
     def __enter__(self):
-        if not self.use_cache:
+        if self.timeout == 0:
             return None
 
         # read cache
@@ -139,7 +137,7 @@ class Cached(object):
         return self.cache_key
 
     def save(self, data):
-        if self.use_cache:
+        if self.timeout != 0:
             # save to cache
             cache.set(self.key, data, version=self.version, timeout=self.timeout)
 
