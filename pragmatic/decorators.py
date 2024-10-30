@@ -150,19 +150,18 @@ class Cached(object):
             Decorator to cache return value.
             """
 
-            cache_key = kwargs.get('key', None)
-            cache_timeout = kwargs.get('timeout', 3600)
-
             @property
             @wraps(func)
             def wrapper(self, *args, **kwargs):
-                if cache_key:
-                    key = cache_key
-                elif hasattr(self, 'cache_key'):
-                    key = f'{self.cache_key}.{func.__name__}'
-                else:
-                    key = f'{func.__qualname__}'
+                key = kwargs.get('key', None)
 
+                if not key:
+                    if hasattr(self, 'cache_key') and self.cache_key:
+                        key = f'{self.cache_key}.{func.__name__}'
+                    else:
+                        key = func.__qualname__
+
+                timeout = kwargs.get('timeout', 3600)
                 version = kwargs.get('version', getattr(self, 'cache_version', None))
                 cached = cache.get(key, version=version)
 
@@ -170,7 +169,7 @@ class Cached(object):
                     return cached
 
                 value = func(self, *args, **kwargs)
-                cache.set(key, value, version=version, timeout=cache_timeout)
+                cache.set(key, value, version=version, timeout=timeout)
 
                 return value
 
