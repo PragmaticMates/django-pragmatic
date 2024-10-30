@@ -109,3 +109,72 @@ def require_lock(model, lock='ACCESS EXCLUSIVE'):
             return view_func(*args, **kwargs)
         return wrapper
     return require_lock_decorator
+
+
+class Cached(object):
+    def __init__(self, key, version=None, user=None, per_user=True, timeout=None, use_cache=True):
+        # TODO: backend
+        self.cache_key = key
+        self.version = version
+        self.user = user
+        self.per_user = per_user
+        self.timeout = timeout
+        self.use_cache = use_cache
+
+    def __enter__(self):
+        if not self.use_cache:
+            return None
+
+        # read cache
+        return cache.get(self.key, version=self.version)
+
+    def __exit__(self, type, value, traceback):
+        pass
+
+    @property
+    def key(self):
+        if self.user and self.user.is_authenticated and self.per_user:
+            return '{}:user={}'.format(self.cache_key, self.user.pk)
+
+        return self.cache_key
+
+    def save(self, data):
+        if self.use_cache:
+            # save to cache
+            cache.set(self.key, data, version=self.version, timeout=self.timeout)
+
+    @staticmethod
+    def cache_decorator(*args, **kwargs):
+        def _decorator(func):
+            """
+            Decorator to cache return value.
+            """
+
+            # cache_key = kwargs.get('key', f'{func.__qualname__}.{func.__name__}')
+            # cache_version = kwargs.get('version')
+            cache_timeout = kwargs.get('timeout', 3600)
+            cache_key = kwargs.get('key', None)
+
+            @property
+            @wraps(func)
+            def wrapper(self, *args, **kwargs):
+                key = f'{cache_key}.{func.__name__}' if cache_key else f'{self.cache_key}.{func.__name__}'
+                version = self.cache_version
+                cached = cache.get(key, version=version)
+
+                if cached is not None:
+                    # if settings.DEBUG:
+                    #     print(f'value from cache: key:{key} version:{version} timeout:{cache_timeout}')
+                    return cached
+
+                value = func(self, *args, **kwargs)
+                cache.set(key, value, version=version, timeout=cache_timeout)
+
+                # if settings.DEBUG:
+                #     print(f'value save to cache: key:{key} version:{version} timeout:{cache_timeout}')
+                return value
+
+            # return wrapper
+            return wrapper
+
+        return _decorator
