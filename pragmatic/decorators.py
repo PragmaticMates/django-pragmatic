@@ -1,7 +1,7 @@
+from functools import wraps
 from django.contrib.auth.decorators import user_passes_test
 from django.contrib.auth.models import Permission
 from django.core.exceptions import PermissionDenied, ObjectDoesNotExist
-
 from python_pragmatic.classes import get_subclasses
 
 
