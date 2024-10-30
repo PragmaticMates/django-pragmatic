@@ -151,7 +151,6 @@ class Cached(object):
             """
 
             cache_key = kwargs.get('key', None)
-            cache_version = kwargs.get('version', None)
             cache_timeout = kwargs.get('timeout', 3600)
 
             @property
@@ -164,7 +163,7 @@ class Cached(object):
                 else:
                     key = f'{func.__qualname__}'
 
-                version = cache_version if cache_version else self.cache_version
+                version = kwargs.get('version', getattr(self, 'cache_version', None))
                 cached = cache.get(key, version=version)
 
                 if cached is not None:
