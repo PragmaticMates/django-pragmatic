@@ -3,7 +3,6 @@ import json
 import os
 import re
 import urllib
-from allauth.utils import build_absolute_uri
 from django import template
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
@@ -20,6 +19,8 @@ from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _, gettext, override as override_language
 
 from python_pragmatic.strings import barcode as pragmatic_barcode
+
+from pragmatic.utils import build_absolute_uri
 
 register = template.Library()
 
@@ -723,8 +724,8 @@ def get_objects_by_ids(ids, model):
 
 
 @register.simple_tag(takes_context=True)
-def uri(context, location):
+def uri(context, location, protocol=None):
     try:
-        return build_absolute_uri(context.get('request', None), location)
+        return build_absolute_uri(context.get('request', None), location, protocol)
     except ObjectDoesNotExist:
         return location
