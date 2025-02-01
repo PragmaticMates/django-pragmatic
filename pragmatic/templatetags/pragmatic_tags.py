@@ -6,6 +6,7 @@ import urllib
 from django import template
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
+from django.core.exceptions import ObjectDoesNotExist
 from django.core.serializers.json import DjangoJSONEncoder
 from django.db.models import DateField, Count, Sum
 from django.db.models.functions import TruncDay
@@ -18,6 +19,8 @@ from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _, gettext, override as override_language
 
 from python_pragmatic.strings import barcode as pragmatic_barcode
+
+from pragmatic.utils import build_absolute_uri
 
 register = template.Library()
 
@@ -718,3 +721,11 @@ def get_objects_by_ids(ids, model):
 
     objects = content_type.model_class().objects.filter(id__in=ids_list)
     return ', '.join(str(obj) for obj in objects.all())
+
+
+@register.simple_tag(takes_context=True)
+def uri(context, location, protocol=None):
+    try:
+        return build_absolute_uri(context.get('request', None), location, protocol)
+    except ObjectDoesNotExist:
+        return location

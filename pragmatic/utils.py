@@ -24,3 +24,28 @@ def compress(files):
         zf.close()
         file_like_object.seek(0)
         return file_like_object
+
+
+def build_absolute_uri(request, location, protocol=None):
+    """
+    Build an absolute URI based on the given request and location.
+    Like request.build_absolute_uri, but gracefully handling
+    the case where request is None.
+    """
+    if request:
+        return request.build_absolute_uri(location)
+
+    from django.apps import apps
+    from django.core.exceptions import ImproperlyConfigured
+
+    if not apps.is_installed("django.contrib.sites"):
+        raise ImproperlyConfigured("Passing `request=None` requires `sites` to be enabled.")
+
+    from django.conf import settings
+    from django.contrib.sites.models import Site
+    from urllib.parse import urlsplit
+
+    protocol = protocol or ("http" if settings.DEBUG else "https")
+    site = Site.objects.get_current()
+    bits = urlsplit(location)
+    return location if bits.scheme and bits.netloc else f"{protocol}://{site.domain}{location}"
