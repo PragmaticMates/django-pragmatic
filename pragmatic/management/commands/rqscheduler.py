@@ -1,4 +1,5 @@
 import django_rq
+from rq.exceptions import InvalidJobOperation
 from django.apps.registry import Apps, apps
 from django.conf import settings
 from django_rq.management.commands.rqscheduler import Command as RQSchedulerCommand
@@ -20,7 +21,10 @@ class Command(RQSchedulerCommand):
 
         # Delete any existing jobs in the scheduler when the app starts up
         for job in scheduler.get_jobs():
-            job.delete()
+            try:
+                job.delete()
+            except InvalidJobOperation:
+                print(f'Skipping orphaned job {job.id} (data missing from Redis)')
 
         print('Scheduled jobs deleted.')
 
