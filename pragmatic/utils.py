@@ -80,3 +80,31 @@ def get_task_decorator(queue=None):
         return decorator(queue)
 
     return decorator
+
+def dispatch_task(task_func, *args, **kwargs):
+    """
+    Standardized entry point for background task execution.
+
+    This function abstracts the differences between various task queuing backends
+    (like RQ or Celery) by attempting to call the most common async dispatch
+    methods in priority order:
+      1. .enqueue() (RQ / pragmatic decorator)
+      2. .apply_async() (Celery)
+      3. .delay() (Standard Celery/RQ)
+
+    If no async API is found, the function falls back to synchronous execution
+    by calling task_func directly.
+    """
+    enqueue = getattr(task_func, "enqueue", None)
+    if callable(enqueue):
+        return enqueue(*args, **kwargs)
+
+    apply_async = getattr(task_func, "apply_async", None)
+    if callable(apply_async):
+        return apply_async(args=args, kwargs=kwargs)
+
+    delay = getattr(task_func, "delay", None)
+    if callable(delay):
+        return delay(*args, **kwargs)
+
+    return task_func(*args, **kwargs)
