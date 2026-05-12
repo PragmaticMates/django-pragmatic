@@ -19,6 +19,9 @@ def permissions_required(app_label, login_url=None, raise_exception=False):
             return True
         # In case the 403 handler should be called raise the exception
         if raise_exception:
+            # Anonymous users should be redirected to login, not shown a 403
+            if not user.is_authenticated:
+                return False
             user.permission_error = app_label
             raise PermissionDenied
         # As the last resort, show the login form
@@ -40,6 +43,9 @@ def permission_required(perm, login_url=None, raise_exception=False):
             return True
         # In case the 403 handler should be called raise the exception
         if raise_exception:
+            # Anonymous users should be redirected to login, not shown a 403
+            if not user.is_authenticated:
+                return False
             try:
                 app_label, codename = perm.split('.')
                 permission = Permission.objects.get(content_type__app_label=app_label, codename=codename)
