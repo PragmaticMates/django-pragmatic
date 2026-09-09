@@ -291,7 +291,7 @@ class disable_signals:
         self.stashed_signals = defaultdict(list)
 
         if disabled_signals:
-            self.disabled_signals = disable_signals
+            self.disabled_signals = disabled_signals
         elif enabled_signals:
             self.disabled_signals = [signal for signal in self.signals if signal not in enabled_signals]
         else:
@@ -306,15 +306,23 @@ class disable_signals:
             self.reconnect(signal)
 
     def disconnect(self, signal):
-        self.stashed_signals[signal] = signal.receivers
+        with signal.lock:
+            self.stashed_signals[signal] = signal.receivers
 
-        if self.disabled_receivers:
-            signal.receivers = [receiver for receiver in self.stashed_signals[signal] if receiver[-1]().__name__ not in self.disabled_receivers]
-        elif self.enabled_receivers:
-            signal.receivers = [receiver for receiver in self.stashed_signals[signal] if receiver[-1]().__name__ in self.enabled_receivers]
-        else:
-            signal.receivers = []
+            if self.disabled_receivers:
+                signal.receivers = [receiver for receiver in self.stashed_signals[signal] if receiver[-1]().__name__ not in self.disabled_receivers]
+            elif self.enabled_receivers:
+                signal.receivers = [receiver for receiver in self.stashed_signals[signal] if receiver[-1]().__name__ in self.enabled_receivers]
+            else:
+                signal.receivers = []
+
+            # assigning receivers directly bypasses connect()/disconnect() cache invalidation
+            signal.sender_receivers_cache.clear()
 
     def reconnect(self, signal):
-        signal.receivers = self.stashed_signals.get(signal, [])
+        with signal.lock:
+            signal.receivers = self.stashed_signals.get(signal, [])
+            # sends during the disabled window cached NO_RECEIVERS per sender; without clearing, those senders' receivers stay silently dead after restore
+            signal.sender_receivers_cache.clear()
+
         del self.stashed_signals[signal]
