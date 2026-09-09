@@ -291,7 +291,7 @@ class disable_signals:
         self.stashed_signals = defaultdict(list)
 
         if disabled_signals:
-            self.disabled_signals = disable_signals
+            self.disabled_signals = disabled_signals
         elif enabled_signals:
             self.disabled_signals = [signal for signal in self.signals if signal not in enabled_signals]
         else:
